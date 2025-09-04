@@ -26,19 +26,20 @@ export default function SearchResultsGrid({ results }: SearchResultsGridProps) {
       // Reset initial state
       cards.forEach(card => {
         (card as HTMLElement).style.opacity = '0';
-        (card as HTMLElement).style.transform = 'scale(0.8) translateY(20px)';
+        (card as HTMLElement).style.transform = 'scale(0) rotate(-10deg) translateY(50px)';
       });
 
       // Animate cards with stagger
       animate(cards, {
         opacity: [0, 1],
-        scale: [0.8, 1],
-        translateY: [20, 0],
-        delay: stagger(100, {
+        scale: [0, 1.1, 1],
+        rotate: ['-10deg', '2deg', '0deg'],
+        translateY: [50, -10, 0],
+        delay: stagger(80, {
           from: 'first'
         }),
-        duration: 600,
-        easing: 'easeOutCubic'
+        duration: 500,
+        easing: 'easeOutBack'
       });
     }
   }, [results.length]);

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Search } from "lucide-react";
+import Header from "./components/Header";
 import SearchResultsGrid from "./components/SearchResultsGrid";
 
 const mockResults = [
@@ -53,11 +54,12 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 pt-16 sm:pt-24">
+    <div className="min-h-screen bg-white dark:bg-gray-900 pt-8 sm:pt-12">
       <div className="w-full px-8">
+        <Header />
         <div className="w-full relative bg-white dark:bg-gray-900 border-4 border-black dark:border-white shadow-[8px_8px_0px_0px_#000] dark:shadow-[8px_8px_0px_0px_#fff] focus-within:shadow-[12px_12px_0px_0px_#000] dark:focus-within:shadow-[12px_12px_0px_0px_#fff] transition-shadow">
           <div className="flex items-center">
-            <div className="p-4 border-r-4 border-black dark:border-white">
+            <div className="p-4">
               <Search className="w-16 h-16 sm:w-20 sm:h-20 text-black dark:text-white" strokeWidth={3} />
             </div>
             <input
