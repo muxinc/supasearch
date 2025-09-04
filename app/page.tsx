@@ -66,7 +66,7 @@ export default function Home() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder=""
-              className="w-full text-4xl sm:text-6xl lg:text-8xl font-bold text-gray-800 dark:text-gray-200 bg-transparent border-none outline-none pb-2 uppercase"
+              className="w-full text-4xl sm:text-6xl lg:text-8xl font-bold text-gray-800 dark:text-gray-200 bg-transparent border-none outline-none pb-2 uppercase font-[family-name:var(--font-bebas-neue)]"
               style={{
                 borderBottom: '4px solid currentColor'
               }}
