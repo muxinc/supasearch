@@ -12,7 +12,7 @@ interface SearchResultCardProps {
 
 export default function SearchResultCard({ item }: SearchResultCardProps) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+    <div className="search-result-card bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
       <div className="aspect-video bg-gray-200 dark:bg-gray-700 relative">
         <img
           src={item.thumbnail}

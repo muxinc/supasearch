@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import { animate, stagger } from "animejs";
 import SearchResultCard from "./SearchResultCard";
 
 interface MediaItem {
@@ -13,13 +17,39 @@ interface SearchResultsGridProps {
 }
 
 export default function SearchResultsGrid({ results }: SearchResultsGridProps) {
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (results.length > 0 && gridRef.current) {
+      const cards = gridRef.current.querySelectorAll('.search-result-card');
+      
+      // Reset initial state
+      cards.forEach(card => {
+        (card as HTMLElement).style.opacity = '0';
+        (card as HTMLElement).style.transform = 'scale(0.8) translateY(20px)';
+      });
+
+      // Animate cards with stagger
+      animate(cards, {
+        opacity: [0, 1],
+        scale: [0.8, 1],
+        translateY: [20, 0],
+        delay: stagger(100, {
+          from: 'first'
+        }),
+        duration: 600,
+        easing: 'easeOutCubic'
+      });
+    }
+  }, [results.length]);
+
   if (results.length === 0) {
     return null;
   }
 
   return (
     <div className="mt-12 px-8">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+      <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
         {results.map((item) => (
           <SearchResultCard key={item.id} item={item} />
         ))}
