@@ -55,21 +55,17 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 pt-16 sm:pt-24">
       <div className="w-full px-8">
-        <div className="flex items-center gap-8">
-          <div className="text-gray-600 dark:text-gray-400">
-            <Search className="w-24 h-24 sm:w-32 sm:h-32" strokeWidth={2} />
-          </div>
-          
-          <div className="flex-1 relative">
+        <div className="w-full relative bg-white dark:bg-gray-900 border-4 border-black dark:border-white shadow-[8px_8px_0px_0px_#000] dark:shadow-[8px_8px_0px_0px_#fff] focus-within:shadow-[12px_12px_0px_0px_#000] dark:focus-within:shadow-[12px_12px_0px_0px_#fff] transition-shadow">
+          <div className="flex items-center">
+            <div className="p-4 border-r-4 border-black dark:border-white">
+              <Search className="w-16 h-16 sm:w-20 sm:h-20 text-black dark:text-white" strokeWidth={3} />
+            </div>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder=""
-              className="w-full text-4xl sm:text-6xl lg:text-8xl font-bold text-gray-800 dark:text-gray-200 bg-transparent border-none outline-none pb-2 uppercase font-[family-name:var(--font-bebas-neue)]"
-              style={{
-                borderBottom: '4px solid currentColor'
-              }}
+              className="flex-1 text-4xl sm:text-6xl lg:text-8xl font-bold text-black dark:text-white bg-transparent border-none outline-none p-4 uppercase font-[family-name:var(--font-bebas-neue)]"
               autoFocus
             />
           </div>
