@@ -10,6 +10,10 @@ interface MediaItem {
   description: string;
   duration: string;
   thumbnail: string;
+  startTime: number;
+  endTime: number;
+  chunkText: string;
+  similarity?: number;
 }
 
 interface SearchResultsGridProps {

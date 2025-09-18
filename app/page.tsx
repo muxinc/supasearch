@@ -1,7 +1,7 @@
 import Header from "./components/Header";
 import SearchResultsGrid from "./components/SearchResultsGrid";
 import SearchInput from "./components/SearchInput";
-import { searchVideos, type Video } from "./db/videos";
+import { searchVideos, type VideoChunk } from "./db/videos";
 
 interface MediaItem {
   id: string;
@@ -9,15 +9,25 @@ interface MediaItem {
   description: string;
   duration: string;
   thumbnail: string;
+  startTime: number;
+  endTime: number;
+  chunkText: string;
+  similarity?: number;
 }
 
-function videoToMediaItem(video: Video): MediaItem {
+function chunkToMediaItem(chunk: VideoChunk): MediaItem {
+  const duration = `${Math.floor(chunk.start_time / 60)}:${Math.floor(chunk.start_time % 60).toString().padStart(2, '0')} - ${Math.floor(chunk.end_time / 60)}:${Math.floor(chunk.end_time % 60).toString().padStart(2, '0')}`;
+
   return {
-    id: video.id,
-    title: video.title,
-    description: video.description,
-    duration: "N/A", // Duration not available from Mux asset data
-    thumbnail: `https://image.mux.com/${video.mux_asset_id}/thumbnail.png?width=320&height=180`
+    id: chunk.chunk_id,
+    title: chunk.title,
+    description: chunk.description,
+    duration: duration,
+    thumbnail: `https://image.mux.com/${chunk.playback_id}/thumbnail.png?width=480&time=${chunk.start_time}`,
+    startTime: chunk.start_time,
+    endTime: chunk.end_time,
+    chunkText: chunk.chunk_text,
+    similarity: chunk.similarity
   };
 }
 
@@ -33,9 +43,9 @@ export default async function Home({ searchParams }: HomeProps) {
   if (query.trim()) {
     try {
       const results = await searchVideos(query, 10);
-      videos = results.map(videoToMediaItem);
+      videos = results.map(chunkToMediaItem);
     } catch (error) {
-      console.error('Error fetching videos:', error);
+      console.error('Error fetching video chunks:', error);
     }
   }
 

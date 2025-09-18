@@ -1,32 +1,59 @@
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
+import { MuxSync } from 'npm:@mux/sync-engine@0.0.1'
+import { queueWorkflowsForEvent } from 'npm:@mux/supabase@0.0.12'
 
-// Setup type definitions for built-in Supabase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
+// Load secrets from environment variables
+const databaseUrl = Deno.env.get('SUPABASE_DB_URL') || 'postgresql://your-database-url'
+const muxWebhookSecret = Deno.env.get('MUX_WEBHOOK_SECRET') || 'your-mux-webhook-secret'
+const muxTokenId = Deno.env.get('MUX_TOKEN_ID') || 'your-mux-token-id'
+const muxTokenSecret = Deno.env.get('MUX_TOKEN_SECRET') || 'your-mux-token-secret'
 
-console.log("Hello from Functions!")
-
-Deno.serve(async (req) => {
-  const { name } = await req.json()
-  const data = {
-    message: `Hello ${name}!`,
-  }
-
-  return new Response(
-    JSON.stringify(data),
-    { headers: { "Content-Type": "application/json" } },
-  )
+// Initialize MuxSync
+const muxSync = new MuxSync({
+  databaseUrl,
+  muxWebhookSecret,
+  muxTokenId,
+  muxTokenSecret,
+  backfillRelatedEntities: false,
+  revalidateEntityViaMuxApi: false,
+  maxPostgresConnections: 5,
+  logger: console
 })
 
-/* To invoke locally:
+// Create HTTP server handler
+Deno.serve(async (req) => {
+  // Only handle POST requests
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed' }),
+      {
+        status: 405,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    )
+  }
 
-  1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
-  2. Make an HTTP request:
+  try {
+    const body = await req.text()
+    await muxSync.processWebhook(body, Object.fromEntries(req.headers.entries()))
+    await queueWorkflowsForEvent(body, Object.fromEntries(req.headers.entries()))
 
-  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/mux-webhook' \
-    --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' \
-    --header 'Content-Type: application/json' \
-    --data '{"name":"Functions"}'
-
-*/
+    return new Response(
+      JSON.stringify({ status: 'success' }),
+      {
+        status: 202,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    )
+  } catch (error) {
+    console.error('Error processing webhook:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    return new Response(
+      JSON.stringify({ error: errorMessage }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    )
+  }
+})

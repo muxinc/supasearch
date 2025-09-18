@@ -4,6 +4,10 @@ interface MediaItem {
   description: string;
   duration: string;
   thumbnail: string;
+  startTime: number;
+  endTime: number;
+  chunkText: string;
+  similarity?: number;
 }
 
 interface SearchResultCardProps {
@@ -27,9 +31,21 @@ export default function SearchResultCard({ item }: SearchResultCardProps) {
         <h3 className="font-bold text-gray-900 dark:text-white line-clamp-2 mb-3 uppercase tracking-wider text-sm">
           {item.title}
         </h3>
-        <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-3 font-medium">
+        <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-3 font-medium mb-2">
           {item.description}
         </p>
+        <div className="border-t border-gray-300 dark:border-gray-600 pt-2 mt-2">
+          <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 italic">
+            "{item.chunkText.substring(0, 150)}..."
+          </p>
+          {item.similarity !== undefined && (
+            <div className="flex justify-between items-center mt-2">
+              <span className="text-xs text-green-600 dark:text-green-400 font-bold">
+                Similarity: {item.similarity.toFixed(3)}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
