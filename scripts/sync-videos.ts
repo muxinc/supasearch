@@ -1,13 +1,13 @@
-import 'dotenv/config';
-import { createClient } from '@supabase/supabase-js';
-import Mux from '@mux/mux-node';
-import { openai } from '@ai-sdk/openai';
-import { embed, generateObject } from 'ai';
-import { z } from 'zod';
+import "dotenv/config";
+import { createClient } from "@supabase/supabase-js";
+import Mux from "@mux/mux-node";
+import { openai } from "@ai-sdk/openai";
+import { embed, generateObject } from "ai";
+import { z } from "zod";
 
 // Parse CLI arguments
 const args = process.argv.slice(2);
-const updateExistingAssets = args.includes('--update-existing-assets');
+const updateExistingAssets = args.includes("--update-existing-assets");
 
 const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -43,12 +43,12 @@ type VTTCue = {
 
 async function checkAssetExists(assetId: string): Promise<boolean> {
   const { data, error } = await supabase
-    .from('videos')
-    .select('mux_asset_id')
-    .eq('mux_asset_id', assetId)
+    .from("videos")
+    .select("mux_asset_id")
+    .eq("mux_asset_id", assetId)
     .single();
 
-  if (error && error.code !== 'PGRST116') {
+  if (error && error.code !== "PGRST116") {
     throw error;
   }
 
@@ -57,24 +57,34 @@ async function checkAssetExists(assetId: string): Promise<boolean> {
 
 function parseVTT(vttContent: string): VTTCue[] {
   const cues: VTTCue[] = [];
-  const lines = vttContent.split('\n');
+  const lines = vttContent.split("\n");
 
   let i = 0;
   while (i < lines.length) {
     const line = lines[i].trim();
 
     // Skip empty lines and WEBVTT header
-    if (!line || line === 'WEBVTT') {
+    if (!line || line === "WEBVTT") {
       i++;
       continue;
     }
 
     // Check if this line contains a timestamp (format: 00:01:30.500 --> 00:01:33.000)
-    const timeMatch = line.match(/(\d{2}):(\d{2}):(\d{2})\.(\d{3})\s+-->\s+(\d{2}):(\d{2}):(\d{2})\.(\d{3})/);
+    const timeMatch = line.match(
+      /(\d{2}):(\d{2}):(\d{2})\.(\d{3})\s+-->\s+(\d{2}):(\d{2}):(\d{2})\.(\d{3})/,
+    );
 
     if (timeMatch) {
-      const startTime = parseInt(timeMatch[1]) * 3600 + parseInt(timeMatch[2]) * 60 + parseInt(timeMatch[3]) + parseInt(timeMatch[4]) / 1000;
-      const endTime = parseInt(timeMatch[5]) * 3600 + parseInt(timeMatch[6]) * 60 + parseInt(timeMatch[7]) + parseInt(timeMatch[8]) / 1000;
+      const startTime =
+        parseInt(timeMatch[1]) * 3600 +
+        parseInt(timeMatch[2]) * 60 +
+        parseInt(timeMatch[3]) +
+        parseInt(timeMatch[4]) / 1000;
+      const endTime =
+        parseInt(timeMatch[5]) * 3600 +
+        parseInt(timeMatch[6]) * 60 +
+        parseInt(timeMatch[7]) +
+        parseInt(timeMatch[8]) / 1000;
 
       // Collect text lines until we hit an empty line or another timestamp
       const textLines: string[] = [];
@@ -85,7 +95,11 @@ function parseVTT(vttContent: string): VTTCue[] {
         if (!textLine) break; // Empty line marks end of cue
 
         // Check if this line is another timestamp (start of next cue)
-        if (textLine.match(/\d{2}:\d{2}:\d{2}\.\d{3}\s+-->\s+\d{2}:\d{2}:\d{2}\.\d{3}/)) {
+        if (
+          textLine.match(
+            /\d{2}:\d{2}:\d{2}\.\d{3}\s+-->\s+\d{2}:\d{2}:\d{2}\.\d{3}/,
+          )
+        ) {
           break;
         }
 
@@ -97,7 +111,7 @@ function parseVTT(vttContent: string): VTTCue[] {
         cues.push({
           startTime,
           endTime,
-          text: textLines.join(' ')
+          text: textLines.join(" "),
         });
       }
     } else {
@@ -108,9 +122,12 @@ function parseVTT(vttContent: string): VTTCue[] {
   return cues;
 }
 
-async function createChunksFromVTT(cues: VTTCue[], chunkDurationSeconds: number = 45): Promise<VideoChunk[]> {
+async function createChunksFromVTT(
+  cues: VTTCue[],
+  chunkDurationSeconds: number = 45,
+): Promise<VideoChunk[]> {
   const chunks: VideoChunk[] = [];
-  let currentChunk = '';
+  let currentChunk = "";
   let chunkStartTime = 0;
   let chunkIndex = 0;
 
@@ -118,7 +135,7 @@ async function createChunksFromVTT(cues: VTTCue[], chunkDurationSeconds: number 
     const cue = cues[i];
 
     // Start new chunk if this is the first cue
-    if (currentChunk === '') {
+    if (currentChunk === "") {
       chunkStartTime = cue.startTime;
       currentChunk = cue.text;
       continue;
@@ -126,14 +143,14 @@ async function createChunksFromVTT(cues: VTTCue[], chunkDurationSeconds: number 
 
     // Check if adding this cue would exceed our chunk duration
     const chunkDuration = cue.endTime - chunkStartTime;
-    const potentialText = currentChunk + ' ' + cue.text;
+    const potentialText = currentChunk + " " + cue.text;
 
     // Create chunk if we exceed duration OR if text gets too long (token limit safety)
     if (chunkDuration > chunkDurationSeconds || potentialText.length > 3000) {
       // Generate embedding for current chunk
       console.log(`Generating embedding for chunk ${chunkIndex}`);
       const { embedding } = await embed({
-        model: openai.textEmbeddingModel('text-embedding-3-small'),
+        model: openai.textEmbeddingModel("text-embedding-3-small"),
         value: currentChunk,
       });
 
@@ -151,7 +168,7 @@ async function createChunksFromVTT(cues: VTTCue[], chunkDurationSeconds: number 
       currentChunk = cue.text;
     } else {
       // Add cue to current chunk
-      currentChunk += ' ' + cue.text;
+      currentChunk += " " + cue.text;
     }
   }
 
@@ -159,7 +176,7 @@ async function createChunksFromVTT(cues: VTTCue[], chunkDurationSeconds: number 
   if (currentChunk) {
     console.log(`Generating embedding for final chunk ${chunkIndex}`);
     const { embedding } = await embed({
-      model: openai.textEmbeddingModel('text-embedding-3-small'),
+      model: openai.textEmbeddingModel("text-embedding-3-small"),
       value: currentChunk,
     });
 
@@ -175,10 +192,13 @@ async function createChunksFromVTT(cues: VTTCue[], chunkDurationSeconds: number 
   return chunks;
 }
 
-async function writeVideoAndChunks(videoData: VideoRow, chunks: VideoChunk[]): Promise<string> {
+async function writeVideoAndChunks(
+  videoData: VideoRow,
+  chunks: VideoChunk[],
+): Promise<string> {
   // First, insert or update the video
   const { data: videoResult, error: videoError } = await supabase
-    .from('videos')
+    .from("videos")
     .upsert(
       {
         mux_asset_id: videoData.assetId,
@@ -189,10 +209,10 @@ async function writeVideoAndChunks(videoData: VideoRow, chunks: VideoChunk[]): P
         playback_id: videoData.playbackId,
       },
       {
-        onConflict: 'mux_asset_id',
-      }
+        onConflict: "mux_asset_id",
+      },
     )
-    .select('id')
+    .select("id")
     .single();
 
   if (videoError) {
@@ -203,16 +223,16 @@ async function writeVideoAndChunks(videoData: VideoRow, chunks: VideoChunk[]): P
 
   // Delete existing chunks for this video (in case of re-processing)
   const { error: deleteError } = await supabase
-    .from('video_chunks')
+    .from("video_chunks")
     .delete()
-    .eq('video_id', videoId);
+    .eq("video_id", videoId);
 
   if (deleteError) {
     throw deleteError;
   }
 
   // Insert new chunks
-  const chunksToInsert = chunks.map(chunk => ({
+  const chunksToInsert = chunks.map((chunk) => ({
     video_id: videoId,
     chunk_index: chunk.chunkIndex,
     chunk_text: chunk.chunkText,
@@ -222,7 +242,7 @@ async function writeVideoAndChunks(videoData: VideoRow, chunks: VideoChunk[]): P
   }));
 
   const { error: chunksError } = await supabase
-    .from('video_chunks')
+    .from("video_chunks")
     .insert(chunksToInsert);
 
   if (chunksError) {
@@ -234,7 +254,7 @@ async function writeVideoAndChunks(videoData: VideoRow, chunks: VideoChunk[]): P
 
 async function syncVideos() {
   try {
-    console.log('Starting video sync...');
+    console.log("Starting video sync...");
     console.log(`Update existing assets: ${updateExistingAssets}`);
 
     // Get all assets from Mux
@@ -256,7 +276,9 @@ async function syncVideos() {
 
         // Get the asset details which includes tracks
         const assetDetails = await mux.video.assets.retrieve(asset.id);
-        const textTrack = assetDetails.tracks?.find(track => track.type === 'text');
+        const textTrack = assetDetails.tracks?.find(
+          (track) => track.type === "text",
+        );
 
         if (!textTrack) {
           console.log(`No text track found for asset ${asset.id}, skipping`);
@@ -275,7 +297,9 @@ async function syncVideos() {
 
         const transcriptTextResponse = await fetch(transcriptTextUrl);
         if (!transcriptTextResponse.ok) {
-          console.log(`Failed to fetch text transcript for asset ${asset.id}, skipping`);
+          console.log(
+            `Failed to fetch text transcript for asset ${asset.id}, skipping`,
+          );
           continue;
         }
 
@@ -290,13 +314,15 @@ async function syncVideos() {
         if (transcriptVttResponse.ok) {
           transcriptVtt = await transcriptVttResponse.text();
         } else {
-          console.log(`Failed to fetch VTT transcript for asset ${asset.id}, continuing with text only`);
+          console.log(
+            `Failed to fetch VTT transcript for asset ${asset.id}, continuing with text only`,
+          );
         }
 
         // Generate title and description using AI
         console.log(`Generating title and description for asset ${asset.id}`);
         const { object } = await generateObject({
-          model: openai('gpt-4o'),
+          model: openai("gpt-4o"),
           schema: z.object({
             title: z.string(),
             description: z.string(),
@@ -309,7 +335,9 @@ async function syncVideos() {
 
         // Parse VTT and create chunks with embeddings
         if (!transcriptVtt) {
-          console.log(`No VTT transcript available for asset ${asset.id}, skipping chunking`);
+          console.log(
+            `No VTT transcript available for asset ${asset.id}, skipping chunking`,
+          );
           continue;
         }
 
@@ -318,7 +346,9 @@ async function syncVideos() {
         console.log(`Parsed ${vttCues.length} VTT cues`);
 
         if (vttCues.length === 0) {
-          console.log(`No valid cues found in VTT for asset ${asset.id}, skipping`);
+          console.log(
+            `No valid cues found in VTT for asset ${asset.id}, skipping`,
+          );
           continue;
         }
 
@@ -326,27 +356,30 @@ async function syncVideos() {
         console.log(`Created ${chunks.length} chunks for asset ${asset.id}`);
 
         // Write video and chunks to database
-        const videoId = await writeVideoAndChunks({
-          assetId: asset.id,
-          title,
-          description,
-          transcriptText: transcriptText,
-          transcriptVtt: transcriptVtt,
-          playbackId: playbackId,
-        }, chunks);
+        const videoId = await writeVideoAndChunks(
+          {
+            assetId: asset.id,
+            title,
+            description,
+            transcriptText: transcriptText,
+            transcriptVtt: transcriptVtt,
+            playbackId: playbackId,
+          },
+          chunks,
+        );
 
-        console.log(`Successfully processed asset ${asset.id} with ${chunks.length} chunks`);
-
+        console.log(
+          `Successfully processed asset ${asset.id} with ${chunks.length} chunks`,
+        );
       } catch (error) {
         console.error(`Error processing asset ${asset.id}:`, error);
         continue;
       }
     }
 
-    console.log('Video sync completed!');
-
+    console.log("Video sync completed!");
   } catch (error) {
-    console.error('Error during video sync:', error);
+    console.error("Error during video sync:", error);
     process.exit(1);
   }
 }

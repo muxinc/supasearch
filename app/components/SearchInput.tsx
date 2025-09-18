@@ -18,12 +18,12 @@ export default function SearchInput({ initialQuery }: SearchInputProps) {
       const params = new URLSearchParams(searchParams);
 
       if (searchQuery.trim()) {
-        params.set('q', searchQuery);
+        params.set("q", searchQuery);
       } else {
-        params.delete('q');
+        params.delete("q");
       }
 
-      const newUrl = params.toString() ? `/?${params.toString()}` : '/';
+      const newUrl = params.toString() ? `/?${params.toString()}` : "/";
       router.push(newUrl);
     }, 300);
 
@@ -34,7 +34,10 @@ export default function SearchInput({ initialQuery }: SearchInputProps) {
     <div className="w-full relative bg-white dark:bg-gray-900 border-4 border-black dark:border-white shadow-[8px_8px_0px_0px_#000] dark:shadow-[8px_8px_0px_0px_#fff] focus-within:shadow-[12px_12px_0px_0px_#000] dark:focus-within:shadow-[12px_12px_0px_0px_#fff] transition-shadow">
       <div className="flex items-center">
         <div className="p-4">
-          <Search className="w-16 h-16 sm:w-20 sm:h-20 text-black dark:text-white" strokeWidth={3} />
+          <Search
+            className="w-16 h-16 sm:w-20 sm:h-20 text-black dark:text-white"
+            strokeWidth={3}
+          />
         </div>
         <input
           type="text"

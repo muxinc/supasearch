@@ -1,3 +1,7 @@
+"use client";
+
+import { useRouter, useSearchParams } from "next/navigation";
+
 interface MediaItem {
   id: string;
   title: string;
@@ -8,6 +12,7 @@ interface MediaItem {
   endTime: number;
   chunkText: string;
   similarity?: number;
+  playbackId: string;
 }
 
 interface SearchResultCardProps {
@@ -15,8 +20,21 @@ interface SearchResultCardProps {
 }
 
 export default function SearchResultCard({ item }: SearchResultCardProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const handleClick = () => {
+    const newSearchParams = new URLSearchParams(searchParams.toString());
+    newSearchParams.set("video", item.id);
+    newSearchParams.set("time", item.startTime.toString());
+    router.push(`/?${newSearchParams.toString()}`);
+  };
+
   return (
-    <div className="search-result-card bg-white dark:bg-gray-900 border-4 border-black dark:border-white shadow-[8px_8px_0px_0px_#000] dark:shadow-[8px_8px_0px_0px_#fff] hover:shadow-[12px_12px_0px_0px_#000] dark:hover:shadow-[12px_12px_0px_0px_#fff] transition-shadow overflow-hidden">
+    <div
+      className="search-result-card bg-white dark:bg-gray-900 border-4 border-black dark:border-white shadow-[8px_8px_0px_0px_#000] dark:shadow-[8px_8px_0px_0px_#fff] hover:shadow-[12px_12px_0px_0px_#000] dark:hover:shadow-[12px_12px_0px_0px_#fff] transition-shadow overflow-hidden cursor-pointer"
+      onClick={handleClick}
+    >
       <div className="aspect-video bg-gray-200 dark:bg-gray-700 relative">
         <img
           src={item.thumbnail}

@@ -1,6 +1,7 @@
 import Header from "./components/Header";
 import SearchResultsGrid from "./components/SearchResultsGrid";
 import SearchInput from "./components/SearchInput";
+import VideoModal from "./components/VideoModal";
 import { searchVideos, type VideoChunk } from "./db/videos";
 
 interface MediaItem {
@@ -13,10 +14,19 @@ interface MediaItem {
   endTime: number;
   chunkText: string;
   similarity?: number;
+  playbackId: string;
 }
 
 function chunkToMediaItem(chunk: VideoChunk): MediaItem {
-  const duration = `${Math.floor(chunk.start_time / 60)}:${Math.floor(chunk.start_time % 60).toString().padStart(2, '0')} - ${Math.floor(chunk.end_time / 60)}:${Math.floor(chunk.end_time % 60).toString().padStart(2, '0')}`;
+  const duration = `${Math.floor(chunk.start_time / 60)}:${Math.floor(
+    chunk.start_time % 60,
+  )
+    .toString()
+    .padStart(2, "0")} - ${Math.floor(chunk.end_time / 60)}:${Math.floor(
+    chunk.end_time % 60,
+  )
+    .toString()
+    .padStart(2, "0")}`;
 
   return {
     id: chunk.chunk_id,
@@ -27,17 +37,19 @@ function chunkToMediaItem(chunk: VideoChunk): MediaItem {
     startTime: chunk.start_time,
     endTime: chunk.end_time,
     chunkText: chunk.chunk_text,
-    similarity: chunk.similarity
+    similarity: chunk.similarity,
+    playbackId: chunk.playback_id,
   };
 }
 
 interface HomeProps {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; video?: string; time?: string }>;
 }
 
 export default async function Home({ searchParams }: HomeProps) {
-  const { q } = await searchParams;
+  const { q, video, time } = await searchParams;
   const query = q || "";
+  const selectedVideoId = video;
   let videos: MediaItem[] = [];
 
   if (query.trim()) {
@@ -45,9 +57,13 @@ export default async function Home({ searchParams }: HomeProps) {
       const results = await searchVideos(query, 10);
       videos = results.map(chunkToMediaItem);
     } catch (error) {
-      console.error('Error fetching video chunks:', error);
+      console.error("Error fetching video chunks:", error);
     }
   }
+
+  const selectedVideo = selectedVideoId
+    ? videos.find((v) => v.id === selectedVideoId)
+    : null;
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 pt-8 sm:pt-12">
@@ -57,6 +73,15 @@ export default async function Home({ searchParams }: HomeProps) {
       </div>
 
       <SearchResultsGrid results={videos} />
+
+      {selectedVideo && (
+        <VideoModal
+          isOpen={true}
+          playbackId={selectedVideo.playbackId}
+          startTime={selectedVideo.startTime}
+          title={selectedVideo.title}
+        />
+      )}
     </div>
   );
 }

@@ -14,6 +14,7 @@ interface MediaItem {
   endTime: number;
   chunkText: string;
   similarity?: number;
+  playbackId: string;
 }
 
 interface SearchResultsGridProps {
@@ -25,25 +26,26 @@ export default function SearchResultsGrid({ results }: SearchResultsGridProps) {
 
   useEffect(() => {
     if (results.length > 0 && gridRef.current) {
-      const cards = gridRef.current.querySelectorAll('.search-result-card');
-      
+      const cards = gridRef.current.querySelectorAll(".search-result-card");
+
       // Reset initial state
-      cards.forEach(card => {
-        (card as HTMLElement).style.opacity = '0';
-        (card as HTMLElement).style.transform = 'scale(0) rotate(-10deg) translateY(50px)';
+      cards.forEach((card) => {
+        (card as HTMLElement).style.opacity = "0";
+        (card as HTMLElement).style.transform =
+          "scale(0) rotate(-10deg) translateY(50px)";
       });
 
       // Animate cards with stagger
       animate(cards, {
         opacity: [0, 1],
         scale: [0, 1.1, 1],
-        rotate: ['-10deg', '2deg', '0deg'],
+        rotate: ["-10deg", "2deg", "0deg"],
         translateY: [50, -10, 0],
         delay: stagger(80, {
-          from: 'first'
+          from: "first",
         }),
         duration: 500,
-        easing: 'easeOutBack'
+        easing: "easeOutBack",
       });
     }
   }, [results.length]);
@@ -54,7 +56,10 @@ export default function SearchResultsGrid({ results }: SearchResultsGridProps) {
 
   return (
     <div className="mt-12 px-8">
-      <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+      <div
+        ref={gridRef}
+        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
+      >
         {results.map((item) => (
           <SearchResultCard key={item.id} item={item} />
         ))}

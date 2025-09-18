@@ -12,6 +12,7 @@
   "dependencies": {
     "@ai-sdk/openai": "^2.0.32",
     "@mux/mux-node": "^12.7.0",
+    "@mux/mux-player-react": "^3.6.0",
     "@supabase/supabase-js": "^2.57.4",
     "ai": "^5.0.45",
     "animejs": "^4.1.3",
