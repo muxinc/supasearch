@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write",
-    "backfill-mux": "tsx scripts/backfill.ts"
+    "backfill-mux": "tsx scripts/backfill.ts",
+    "functions:deploy": "supabase functions deploy",
+    "db:push": "supabase db push --debug"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.32",

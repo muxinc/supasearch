@@ -1,7 +1,5 @@
 -- Enable the "vector" extension for embeddings
-create extension vector
-with
-  schema extensions;
+create extension if not exists vector;
 
 -- Videos table for metadata (no embeddings here)
 create table public.videos (
