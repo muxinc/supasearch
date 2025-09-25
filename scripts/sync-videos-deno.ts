@@ -1,19 +1,18 @@
-import "dotenv/config";
-import { createClient } from "@supabase/supabase-js";
-import Mux from "@mux/mux-node";
-import { createEmbeddings } from '../lib/create-embeddings';
+import { createClient } from "jsr:@supabase/supabase-js@2";
+import Mux from "npm:@mux/mux-node";
+import { createEmbeddings } from '../supabase/functions/video-embeddings/create-embeddings.ts';
 
 // Parse CLI arguments
-const args = process.argv.slice(2);
+const args = Deno.args;
 const updateExistingAssets = args.includes("--update-existing-assets");
 
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const mux = new Mux({
-  tokenId: process.env.MUX_TOKEN_ID,
-  tokenSecret: process.env.MUX_TOKEN_SECRET,
+  tokenId: Deno.env.get("MUX_TOKEN_ID")!,
+  tokenSecret: Deno.env.get("MUX_TOKEN_SECRET")!,
 });
 
 async function checkAssetExists(assetId: string): Promise<boolean> {
@@ -29,7 +28,6 @@ async function checkAssetExists(assetId: string): Promise<boolean> {
 
   return !!data;
 }
-
 
 async function syncVideos() {
   try {
@@ -64,7 +62,7 @@ async function syncVideos() {
     console.log("Video sync completed!");
   } catch (error) {
     console.error("Error during video sync:", error);
-    process.exit(1);
+    Deno.exit(1);
   }
 }
 

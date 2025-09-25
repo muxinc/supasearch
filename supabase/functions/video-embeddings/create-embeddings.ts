@@ -1,13 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
-import { openai } from "@ai-sdk/openai";
-import { embed, generateObject } from "ai";
-import { z } from 'zod';
-import Mux from "@mux/mux-node";
-
-const mux = new Mux({
-  tokenId: process.env.MUX_TOKEN_ID,
-  tokenSecret: process.env.MUX_TOKEN_SECRET,
-});
+import { createClient } from "jsr:@supabase/supabase-js@2"
+import { openai } from "npm:@ai-sdk/openai"
+import { embed, generateObject } from "npm:ai"
+import { z } from "npm:zod"
+import Mux from "npm:@mux/mux-node"
 
 type VideoRow = {
   assetId: string;
@@ -172,6 +167,7 @@ async function createChunksFromVTT(
 async function writeVideoAndChunks(
   videoData: VideoRow,
   chunks: VideoChunk[],
+  supabase: ReturnType<typeof createClient>,
 ): Promise<string> {
   // First, insert or update the video
   const { data: videoResult, error: videoError } = await supabase
@@ -229,13 +225,12 @@ async function writeVideoAndChunks(
   return videoId;
 }
 
-
-const supabaseUrl = process.env.SUPABASE_DB_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-export async function createEmbeddings (assetId: string) {
-        // Get the asset details which includes tracks
+export async function createEmbeddings(
+  assetId: string,
+  mux: Mux,
+  supabase: ReturnType<typeof createClient>,
+) {
+  // Get the asset details which includes tracks
   const assetDetails = await mux.video.assets.retrieve(assetId);
   const textTrack = assetDetails.tracks?.find(
     (track) => track.type === "text",
@@ -243,13 +238,13 @@ export async function createEmbeddings (assetId: string) {
 
   if (!textTrack) {
     console.log(`No text track found for asset ${assetId}, skipping`);
-    return
+    return;
   }
 
   const playbackId = assetDetails.playback_ids?.[0]?.id;
   if (!playbackId) {
     console.log(`No playback ID found for asset ${assetId}, skipping`);
-    return
+    return;
   }
 
   const transcriptTextUrl = `https://stream.mux.com/${playbackId}/text/${textTrack.id}.txt`;
@@ -259,7 +254,7 @@ export async function createEmbeddings (assetId: string) {
     console.log(
       `Failed to fetch text transcript for asset ${assetId}, skipping`,
     );
-    return
+    return;
   }
 
   const transcriptText = await transcriptTextResponse.text();
@@ -289,46 +284,48 @@ export async function createEmbeddings (assetId: string) {
     prompt: `Given the transcript for this video, generate a title and description\n${transcriptText}`,
   });
 
-        const { title, description } = object;
-        console.log(`Generated title: ${title}`);
+  const { title, description } = object;
+  console.log(`Generated title: ${title}`);
 
-        // Parse VTT and create chunks with embeddings
-        if (!transcriptVtt) {
-          console.log(
-            `No VTT transcript available for asset ${assetId}, skipping chunking`,
-          );
-          return;
-        }
+  // Parse VTT and create chunks with embeddings
+  if (!transcriptVtt) {
+    console.log(
+      `No VTT transcript available for asset ${assetId}, skipping chunking`,
+    );
+    return;
+  }
 
-        console.log(`Parsing VTT and creating chunks for asset ${assetId}`);
-        const vttCues = parseVTT(transcriptVtt);
-        console.log(`Parsed ${vttCues.length} VTT cues`);
+  console.log(`Parsing VTT and creating chunks for asset ${assetId}`);
+  const vttCues = parseVTT(transcriptVtt);
+  console.log(`Parsed ${vttCues.length} VTT cues`);
 
-        if (vttCues.length === 0) {
-          console.log(
-            `No valid cues found in VTT for asset ${assetId}, skipping`,
-          );
-          return;
-        }
+  if (vttCues.length === 0) {
+    console.log(
+      `No valid cues found in VTT for asset ${assetId}, skipping`,
+    );
+    return;
+  }
 
-        const chunks = await createChunksFromVTT(vttCues);
-        console.log(`Created ${chunks.length} chunks for asset ${assetId}`);
+  const chunks = await createChunksFromVTT(vttCues);
+  console.log(`Created ${chunks.length} chunks for asset ${assetId}`);
 
-        // Write video and chunks to database
-        const videoId = await writeVideoAndChunks(
-          {
-            assetId: assetId,
-            title,
-            description,
-            transcriptText: transcriptText,
-            transcriptVtt: transcriptVtt,
-            playbackId: playbackId,
-          },
-          chunks,
-        );
+  // Write video and chunks to database
+  const videoId = await writeVideoAndChunks(
+    {
+      assetId: assetId,
+      title,
+      description,
+      transcriptText: transcriptText,
+      transcriptVtt: transcriptVtt,
+      playbackId: playbackId,
+    },
+    chunks,
+    supabase,
+  );
 
-        console.log(
-          `Successfully processed asset ${assetId} with ${chunks.length} chunks`,
-        );
+  console.log(
+    `Successfully processed asset ${assetId} with ${chunks.length} chunks`,
+  );
+
+  return videoId;
 }
-
