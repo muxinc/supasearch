@@ -7,13 +7,14 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "biome check",
-    "format": "biome format --write"
+    "format": "biome format --write",
+    "backfill-mux": "tsx scripts/backfill.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.32",
     "@mux/mux-node": "^12.7.0",
     "@mux/mux-player-react": "^3.6.0",
-    "@mux/supabase": "^0.0.13",
+    "@mux/supabase": "^0.0.14",
     "@supabase/supabase-js": "^2.57.4",
     "ai": "^5.0.45",
     "animejs": "^4.1.3",
@@ -32,6 +33,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "tailwindcss": "^4",
+    "tsx": "^4.20.5",
     "typescript": "^5"
   }
 }
