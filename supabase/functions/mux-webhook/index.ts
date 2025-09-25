@@ -1,12 +1,12 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
-import { MuxSync } from 'npm:@mux/sync-engine@0.0.2'
-import { queueWorkflowsForEvent } from 'npm:@mux/supabase@0.0.13'
+import { MuxSync } from '@mux/sync-engine'
+import { queueWorkflowsForEvent } from '@mux/supabase'
 
 // Load secrets from environment variables
-const databaseUrl = Deno.env.get('SUPABASE_DB_URL') || 'postgresql://your-database-url'
-const muxWebhookSecret = Deno.env.get('MUX_WEBHOOK_SECRET') || 'your-mux-webhook-secret'
-const muxTokenId = Deno.env.get('MUX_TOKEN_ID') || 'your-mux-token-id'
-const muxTokenSecret = Deno.env.get('MUX_TOKEN_SECRET') || 'your-mux-token-secret'
+const databaseUrl = Deno.env.get('SUPABASE_DB_URL')
+const muxWebhookSecret = Deno.env.get('MUX_WEBHOOK_SECRET')
+const muxTokenId = Deno.env.get('MUX_TOKEN_ID')
+const muxTokenSecret = Deno.env.get('MUX_TOKEN_SECRET')
 
 // Initialize MuxSync
 const muxSync = new MuxSync({
