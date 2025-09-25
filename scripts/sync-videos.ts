@@ -7,7 +7,7 @@ import { createEmbeddings } from '../app/lib/create-embeddings';
 const args = process.argv.slice(2);
 const updateExistingAssets = args.includes("--update-existing-assets");
 
-const supabaseUrl = process.env.SUPABASE_URL!;
+const supabaseUrl = process.env.SUPABASE_DB_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
