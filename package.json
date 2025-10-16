@@ -8,7 +8,6 @@
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write",
-    "backfill-mux": "tsx scripts/backfill.ts",
     "functions:deploy": "supabase functions deploy",
     "db:push": "supabase db push --debug"
   },
@@ -16,7 +15,7 @@
     "@ai-sdk/openai": "^2.0.32",
     "@mux/mux-node": "^12.7.0",
     "@mux/mux-player-react": "^3.6.0",
-    "@mux/supabase": "^0.0.14",
+    "@mux/supabase": "^0.0.21",
     "@supabase/supabase-js": "^2.57.4",
     "ai": "^5.0.45",
     "animejs": "^4.1.3",

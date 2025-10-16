@@ -8,6 +8,13 @@ const updateExistingAssets = args.includes("--update-existing-assets");
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+// Client for querying mux schema
+const supabaseMux = createClient(supabaseUrl, supabaseKey, {
+  db: { schema: 'mux' }
+});
+
+// Client for querying public schema
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const mux = new Mux({
@@ -34,16 +41,23 @@ async function syncVideos() {
     console.log("Starting video sync...");
     console.log(`Update existing assets: ${updateExistingAssets}`);
 
-    // Get all assets from Mux
-    const assets = await mux.video.assets.list();
-    console.log(`Found ${assets.data.length} assets`);
+    // Get all assets from Supabase mux.assets table
+    const { data: assets, error: assetsError } = await supabaseMux
+      .from("assets")
+      .select("id, status");
 
-    for (const asset of assets.data) {
+    if (assetsError) {
+      throw assetsError;
+    }
+
+    console.log(`Found ${assets?.length || 0} assets`);
+
+    for (const asset of assets || []) {
       const assetId = asset.id;
       try {
         console.log(`Processing asset: ${assetId}`);
 
-        // Check if asset already exists in database
+        // Check if asset already exists in videos table (public schema)
         if (!updateExistingAssets) {
           const exists = await checkAssetExists(assetId);
           if (exists) {

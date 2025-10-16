@@ -1,5 +1,8 @@
+[api]
+schemas = ["public", "mux"]
 
 [functions.mux-webhook]
+static_files = [ "./functions/mux-webhook/mux.toml" ]
 enabled = true
 verify_jwt = false
 import_map = "./functions/mux-webhook/deno.json"
@@ -11,6 +14,8 @@ entrypoint = "./functions/mux-webhook/index.ts"
 # static_files = [ "./functions/mux-webhook/*.html" ]
 
 [db.vault]
+mux_supabase_service_role_key = "env(SUPABASE_SERVICE_ROLE_KEY)"
+mux_supabase_url = "env(SUPABASE_URL)"
 secret_key = "env(SUPABASE_SERVICE_ROLE_KEY)"
 supabase_url = "env(SUPABASE_URL)"
 
