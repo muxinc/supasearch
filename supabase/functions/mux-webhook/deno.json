@@ -1,9 +1,0 @@
-{
-  "imports": {
-    "@mux/supabase": "npm:@mux/supabase@0.0.15/deno",
-    "@mux/sync-engine": "npm:@mux/sync-engine@0.0.3",
-    "@supabase/supabase-js": "npm:@supabase/supabase-js@2",
-    "@mux/mux-node": "npm:@mux/mux-node",
-    "toml": "npm:toml"
-  }
-}

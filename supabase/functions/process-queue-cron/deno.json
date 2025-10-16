@@ -1,6 +1,0 @@
-{
-  "imports": {
-    "@mux/sync-engine": "npm:@mux/sync-engine@0.0.3",
-    "@mux/supabase": "npm:@mux/supabase@0.0.14"
-  }
-}

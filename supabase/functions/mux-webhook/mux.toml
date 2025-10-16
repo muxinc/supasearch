@@ -1,2 +1,0 @@
-[workflows.video-embeddings]
-events = ["video.asset.track.ready"]
