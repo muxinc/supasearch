@@ -31,12 +31,12 @@ export default function SearchInput({ initialQuery }: SearchInputProps) {
   }, [searchQuery, router, searchParams]);
 
   return (
-    <div className="w-full relative bg-white dark:bg-gray-900 border-4 border-black dark:border-white shadow-[8px_8px_0px_0px_#000] dark:shadow-[8px_8px_0px_0px_#fff] focus-within:shadow-[12px_12px_0px_0px_#000] dark:focus-within:shadow-[12px_12px_0px_0px_#fff] transition-shadow">
+    <div className="w-full relative bg-white border-2 border-black shadow-[4px_4px_0px_0px_#000] focus-within:shadow-[6px_6px_0px_0px_#000] transition-shadow">
       <div className="flex items-center">
-        <div className="p-4">
+        <div className="p-2 sm:p-3">
           <Search
-            className="w-16 h-16 sm:w-20 sm:h-20 text-black dark:text-white"
-            strokeWidth={3}
+            className="w-5 h-5 sm:w-6 sm:h-6 text-black"
+            strokeWidth={2}
           />
         </div>
         <input
@@ -44,7 +44,7 @@ export default function SearchInput({ initialQuery }: SearchInputProps) {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder=""
-          className="flex-1 text-4xl sm:text-6xl lg:text-8xl font-bold text-black dark:text-white bg-transparent border-none outline-none p-4 uppercase font-[family-name:var(--font-bebas-neue)]"
+          className="flex-1 text-base sm:text-lg text-black bg-transparent border-none outline-none py-2 sm:py-3 pr-3"
           autoFocus
         />
       </div>

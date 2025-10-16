@@ -1,6 +1,6 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Mux from "npm:@mux/mux-node";
-import { createEmbeddings } from '../supabase/functions/video-embeddings/create-embeddings.ts';
+import { createEmbeddings } from "../supabase/functions/video-embeddings/create-embeddings.ts";
 
 // Parse CLI arguments
 const args = Deno.args;
@@ -11,7 +11,7 @@ const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 // Client for querying mux schema
 const supabaseMux = createClient(supabaseUrl, supabaseKey, {
-  db: { schema: 'mux' }
+  db: { schema: "mux" },
 });
 
 // Client for querying public schema

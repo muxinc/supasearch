@@ -9,7 +9,10 @@
     "lint": "biome check",
     "format": "biome format --write",
     "functions:deploy": "supabase functions deploy",
-    "db:push": "supabase db push --debug"
+    "db:push": "supabase db push --debug",
+    "mux-backfill": "npx @mux/supabase backfill",
+    "videos-backfill-existing": "deno run --allow-net --allow-env --allow-read --env scripts/sync-videos-deno.ts --update-existing-assets",
+    "videos-backfill-missing": "deno run --allow-net --allow-env --allow-read --env scripts/sync-videos-deno.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.32",

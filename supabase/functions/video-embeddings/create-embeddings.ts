@@ -1,16 +1,22 @@
-import { createClient } from "jsr:@supabase/supabase-js@2"
-import { openai } from "npm:@ai-sdk/openai"
-import { embed, generateObject } from "npm:ai"
-import { z } from "npm:zod"
-import Mux from "npm:@mux/mux-node"
+import { createClient } from "jsr:@supabase/supabase-js@2";
+import { openai } from "npm:@ai-sdk/openai";
+import { embed, generateObject } from "npm:ai";
+import { z } from "npm:zod";
+import Mux from "npm:@mux/mux-node";
+
+type VideoChapter = {
+  start: string; // Format: "HH:MM:SS"
+  title: string;
+};
 
 type VideoRow = {
   assetId: string;
   title: string;
   description: string;
+  topics: string[];
+  chapters: VideoChapter[];
   transcriptText: string;
   transcriptVtt?: string;
-  playbackId: string;
 };
 
 type VideoChunk = {
@@ -18,6 +24,7 @@ type VideoChunk = {
   chunkText: string;
   startTime: number;
   endTime: number;
+  visualDescription: string;
   embedding: number[];
 };
 
@@ -94,8 +101,193 @@ function parseVTT(vttContent: string): VTTCue[] {
   return cues;
 }
 
+/**
+ * Gets the playback ID from the mux.assets table
+ */
+async function getPlaybackIdFromAsset(
+  assetId: string,
+  supabaseMux: ReturnType<typeof createClient>,
+): Promise<string | null> {
+  const { data, error } = await supabaseMux
+    .from("assets")
+    .select("playback_ids")
+    .eq("id", assetId)
+    .single();
+
+  if (error || !data) {
+    console.error(`Failed to fetch playback_ids for asset ${assetId}:`, error);
+    return null;
+  }
+
+  const playbackIds = data.playback_ids as Array<{ id: string }>;
+  return playbackIds?.[0]?.id || null;
+}
+
+/**
+ * Generates video metadata including title, description, topics, and chapters
+ */
+async function generateVideoMetadata(transcriptText: string): Promise<{
+  title: string;
+  description: string;
+  topics: string[];
+  chapters: VideoChapter[];
+}> {
+  const { object } = await generateObject({
+    model: openai("gpt-4o"),
+    schema: z.object({
+      title: z.string().describe("A concise title for the video"),
+      description: z
+        .string()
+        .describe("A brief description of the video content"),
+      topics: z
+        .array(z.string())
+        .min(3)
+        .max(5)
+        .describe(
+          "3-5 key topics or keywords from the video (short keywords/phrases like 'web components', 'hdr', 'webrtc')",
+        ),
+      chapters: z
+        .array(
+          z.object({
+            start: z.string().describe("Timestamp in HH:MM:SS format"),
+            title: z.string().describe("Title for this chapter/section"),
+          }),
+        )
+        .describe(
+          "Key chapters/sections of the video with timestamps and titles",
+        ),
+    }),
+    prompt: `Given the transcript for this video, generate a title, description, 3-5 key topics, and chapters with timestamps.
+
+For chapters, identify the key sections/topics discussed in the video and provide a timestamp (in HH:MM:SS format) and title for each chapter.
+
+Transcript:
+${transcriptText}`,
+  });
+
+  return object;
+}
+
+/**
+ * Pre-fetches an image to cache it for OpenAI
+ */
+async function prefetchImage(url: string): Promise<void> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to prefetch image: ${response.statusText}`);
+    }
+    // Just fetch it, browser/runtime will cache it
+    await response.arrayBuffer();
+  } catch (error) {
+    console.error(`Error prefetching image ${url}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Gets thumbnail URL at the midpoint of the chunk
+ */
+function getThumbnailUrl(
+  playbackId: string,
+  startTime: number,
+  endTime: number,
+): string {
+  const midpoint = (startTime + endTime) / 2;
+  return `https://image.mux.com/${playbackId}/thumbnail.png?time=${midpoint}`;
+}
+
+/**
+ * Generates visual description from a thumbnail image with retry logic
+ */
+async function generateVisualDescription(
+  imageUrl: string,
+  maxRetries: number = 2,
+): Promise<string> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`Retry attempt ${attempt} for visual description...`);
+        // 5 second delay between retries
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      }
+
+      // Prefetch image before sending to OpenAI
+      console.log(`Prefetching image...`);
+      await prefetchImage(imageUrl);
+
+      // Generate visual description using OpenAI vision model
+      const { object } = await generateObject({
+        model: openai("gpt-4o"),
+        schema: z.object({
+          description: z
+            .string()
+            .describe(
+              "1-5 sentences describing what is happening visually in this video segment",
+            ),
+        }),
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Describe what is happening visually in this video segment. Focus on the speaker, setting, any on-screen text or graphics, and key visual elements. Provide 1-5 sentences.",
+              },
+              {
+                type: "image" as const,
+                image: imageUrl,
+              },
+            ],
+          },
+        ],
+      });
+
+      return object.description;
+    } catch (error) {
+      lastError = error as Error;
+      console.error(
+        `Error generating visual description (attempt ${attempt + 1}/${maxRetries + 1}):`,
+        error,
+      );
+
+      if (attempt === maxRetries) {
+        // Final attempt failed, return empty string and log warning
+        console.warn(
+          `Failed to generate visual description after ${maxRetries + 1} attempts. Continuing without visual description.`,
+        );
+        return "";
+      }
+    }
+  }
+
+  return "";
+}
+
+/**
+ * Creates embedding text by combining topics, chunk text, and visual description
+ */
+function createEmbeddingText(
+  topics: string[],
+  chunkText: string,
+  visualDescription: string,
+): string {
+  const topicsText = `Topics: ${topics.join(", ")}`;
+  const parts = [topicsText, chunkText];
+
+  if (visualDescription) {
+    parts.push(`Visual: ${visualDescription}`);
+  }
+
+  return parts.join("\n\n");
+}
+
 async function createChunksFromVTT(
   cues: VTTCue[],
+  topics: string[],
+  playbackId: string,
   chunkDurationSeconds: number = 45,
 ): Promise<VideoChunk[]> {
   const chunks: VideoChunk[] = [];
@@ -119,18 +311,35 @@ async function createChunksFromVTT(
 
     // Create chunk if we exceed duration OR if text gets too long (token limit safety)
     if (chunkDuration > chunkDurationSeconds || potentialText.length > 3000) {
+      const chunkEndTime = cues[i - 1].endTime;
+
+      // Generate visual description from thumbnail
+      // TODO: Re-enable visual descriptions when needed
+      // console.log(`Generating visual description for chunk ${chunkIndex}`);
+      // const thumbnailUrl = getThumbnailUrl(playbackId, chunkStartTime, chunkEndTime);
+      // const visualDescription = await generateVisualDescription(thumbnailUrl);
+      const visualDescription = "";
+
+      // Create combined embedding text
+      const embeddingText = createEmbeddingText(
+        topics,
+        currentChunk,
+        visualDescription,
+      );
+
       // Generate embedding for current chunk
       console.log(`Generating embedding for chunk ${chunkIndex}`);
       const { embedding } = await embed({
         model: openai.textEmbeddingModel("text-embedding-3-small"),
-        value: currentChunk,
+        value: embeddingText,
       });
 
       chunks.push({
         chunkIndex,
         chunkText: currentChunk,
         startTime: chunkStartTime,
-        endTime: cues[i - 1].endTime, // End time of previous cue
+        endTime: chunkEndTime,
+        visualDescription,
         embedding,
       });
 
@@ -146,17 +355,35 @@ async function createChunksFromVTT(
 
   // Don't forget the last chunk
   if (currentChunk) {
+    const chunkEndTime = cues[cues.length - 1].endTime;
+
+    // Generate visual description from thumbnail
+    // TODO: Re-enable visual descriptions when needed
+    // console.log(`Generating visual description for final chunk ${chunkIndex}`);
+    // const thumbnailUrl = getThumbnailUrl(playbackId, chunkStartTime, chunkEndTime);
+    // const visualDescription = await generateVisualDescription(thumbnailUrl);
+    const visualDescription = "";
+
+    // Create combined embedding text
+    const embeddingText = createEmbeddingText(
+      topics,
+      currentChunk,
+      visualDescription,
+    );
+
+    // Generate embedding for final chunk
     console.log(`Generating embedding for final chunk ${chunkIndex}`);
     const { embedding } = await embed({
       model: openai.textEmbeddingModel("text-embedding-3-small"),
-      value: currentChunk,
+      value: embeddingText,
     });
 
     chunks.push({
       chunkIndex,
       chunkText: currentChunk,
       startTime: chunkStartTime,
-      endTime: cues[cues.length - 1].endTime,
+      endTime: chunkEndTime,
+      visualDescription,
       embedding,
     });
   }
@@ -177,9 +404,10 @@ async function writeVideoAndChunks(
         mux_asset_id: videoData.assetId,
         title: videoData.title,
         description: videoData.description,
+        topics: videoData.topics,
+        chapters: videoData.chapters,
         transcript_en_text: videoData.transcriptText,
         transcript_en_vtt: videoData.transcriptVtt,
-        playback_id: videoData.playbackId,
       },
       {
         onConflict: "mux_asset_id",
@@ -211,6 +439,7 @@ async function writeVideoAndChunks(
     chunk_text: chunk.chunkText,
     start_time: chunk.startTime,
     end_time: chunk.endTime,
+    visual_description: chunk.visualDescription,
     embedding: chunk.embedding,
   }));
 
@@ -230,20 +459,26 @@ export async function createEmbeddings(
   mux: Mux,
   supabase: ReturnType<typeof createClient>,
 ) {
-  // Get the asset details which includes tracks
-  const assetDetails = await mux.video.assets.retrieve(assetId);
-  const textTrack = assetDetails.tracks?.find(
-    (track) => track.type === "text",
-  );
+  // Create a supabase client for mux schema
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabaseMux = createClient(supabaseUrl, supabaseKey, {
+    db: { schema: "mux" },
+  });
 
-  if (!textTrack) {
-    console.log(`No text track found for asset ${assetId}, skipping`);
+  // Get playback ID from mux.assets table
+  const playbackId = await getPlaybackIdFromAsset(assetId, supabaseMux);
+  if (!playbackId) {
+    console.log(`No playback ID found for asset ${assetId}, skipping`);
     return;
   }
 
-  const playbackId = assetDetails.playback_ids?.[0]?.id;
-  if (!playbackId) {
-    console.log(`No playback ID found for asset ${assetId}, skipping`);
+  // Get the asset details which includes tracks
+  const assetDetails = await mux.video.assets.retrieve(assetId);
+  const textTrack = assetDetails.tracks?.find((track) => track.type === "text");
+
+  if (!textTrack) {
+    console.log(`No text track found for asset ${assetId}, skipping`);
     return;
   }
 
@@ -273,19 +508,15 @@ export async function createEmbeddings(
     );
   }
 
-  // Generate title and description using AI
-  console.log(`Generating title and description for asset ${assetId}`);
-  const { object } = await generateObject({
-    model: openai("gpt-4o"),
-    schema: z.object({
-      title: z.string(),
-      description: z.string(),
-    }),
-    prompt: `Given the transcript for this video, generate a title and description\n${transcriptText}`,
-  });
-
-  const { title, description } = object;
+  // Generate title, description, topics, and chapters using AI
+  console.log(
+    `Generating metadata (title, description, topics, chapters) for asset ${assetId}`,
+  );
+  const { title, description, topics, chapters } =
+    await generateVideoMetadata(transcriptText);
   console.log(`Generated title: ${title}`);
+  console.log(`Generated topics: ${topics.join(", ")}`);
+  console.log(`Generated ${chapters.length} chapters`);
 
   // Parse VTT and create chunks with embeddings
   if (!transcriptVtt) {
@@ -300,13 +531,11 @@ export async function createEmbeddings(
   console.log(`Parsed ${vttCues.length} VTT cues`);
 
   if (vttCues.length === 0) {
-    console.log(
-      `No valid cues found in VTT for asset ${assetId}, skipping`,
-    );
+    console.log(`No valid cues found in VTT for asset ${assetId}, skipping`);
     return;
   }
 
-  const chunks = await createChunksFromVTT(vttCues);
+  const chunks = await createChunksFromVTT(vttCues, topics, playbackId);
   console.log(`Created ${chunks.length} chunks for asset ${assetId}`);
 
   // Write video and chunks to database
@@ -315,9 +544,10 @@ export async function createEmbeddings(
       assetId: assetId,
       title,
       description,
+      topics,
+      chapters,
       transcriptText: transcriptText,
       transcriptVtt: transcriptVtt,
-      playbackId: playbackId,
     },
     chunks,
     supabase,

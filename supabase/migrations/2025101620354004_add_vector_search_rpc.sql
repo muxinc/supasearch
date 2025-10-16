@@ -8,13 +8,10 @@ returns table (
   chunk_id uuid,
   video_id uuid,
   mux_asset_id text,
-  playback_id text,
-  title text,
-  description text,
   chunk_text text,
-  start_time numeric,
-  end_time numeric,
-  similarity float
+  visual_description text,
+  parent_video_topics text[],
+  similarity_score float
 )
 language sql stable
 as $$
@@ -22,13 +19,10 @@ as $$
     vc.id as chunk_id,
     v.id as video_id,
     v.mux_asset_id,
-    v.playback_id,
-    v.title,
-    v.description,
     vc.chunk_text,
-    vc.start_time,
-    vc.end_time,
-    1 - (vc.embedding <-> query_embedding) as similarity
+    vc.visual_description,
+    v.topics as parent_video_topics,
+    1 - (vc.embedding <-> query_embedding) as similarity_score
   from video_chunks vc
   join videos v on vc.video_id = v.id
   where vc.embedding is not null

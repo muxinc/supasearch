@@ -8,8 +8,9 @@ create table public.videos (
   description text,
   transcript_en_text text,
   transcript_en_vtt text,
-  mux_asset_id text not null,
-  playback_id text,
+  mux_asset_id text not null references mux.assets(id) on delete cascade,
+  topics text[],
+  chapters jsonb,
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now()
 );
@@ -22,6 +23,7 @@ create table public.video_chunks (
   chunk_text text not null,
   start_time numeric not null, -- seconds with decimal precision
   end_time numeric not null,   -- seconds with decimal precision
+  visual_description text,
   embedding vector(1536),      -- OpenAI text-embedding-3-small
   created_at timestamp with time zone default now()
 );

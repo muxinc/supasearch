@@ -4,21 +4,26 @@ import { useEffect, useRef } from "react";
 import { animate, stagger } from "animejs";
 import SearchResultCard from "./SearchResultCard";
 
-interface MediaItem {
-  id: string;
-  title: string;
-  description: string;
-  duration: string;
-  thumbnail: string;
-  startTime: number;
-  endTime: number;
-  chunkText: string;
-  similarity?: number;
-  playbackId: string;
+interface ClipResult {
+  start_time_seconds: number;
+  end_time_seconds: number;
+  snippet: string;
+}
+
+interface VideoResult {
+  video: {
+    id: string;
+    mux_asset_id: string;
+    title: string;
+    description: string;
+    playback_id: string;
+    topics: string[];
+  };
+  clips: ClipResult[];
 }
 
 interface SearchResultsGridProps {
-  results: MediaItem[];
+  results: VideoResult[];
 }
 
 export default function SearchResultsGrid({ results }: SearchResultsGridProps) {
@@ -60,8 +65,8 @@ export default function SearchResultsGrid({ results }: SearchResultsGridProps) {
         ref={gridRef}
         className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
       >
-        {results.map((item) => (
-          <SearchResultCard key={item.id} item={item} />
+        {results.map((result) => (
+          <SearchResultCard key={result.video.id} result={result} />
         ))}
       </div>
     </div>

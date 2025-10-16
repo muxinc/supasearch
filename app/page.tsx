@@ -2,84 +2,74 @@ import Header from "./components/Header";
 import SearchResultsGrid from "./components/SearchResultsGrid";
 import SearchInput from "./components/SearchInput";
 import VideoModal from "./components/VideoModal";
-import { searchVideos, type VideoChunk } from "./db/videos";
-
-interface MediaItem {
-  id: string;
-  title: string;
-  description: string;
-  duration: string;
-  thumbnail: string;
-  startTime: number;
-  endTime: number;
-  chunkText: string;
-  similarity?: number;
-  playbackId: string;
-}
-
-function chunkToMediaItem(chunk: VideoChunk): MediaItem {
-  const duration = `${Math.floor(chunk.start_time / 60)}:${Math.floor(
-    chunk.start_time % 60,
-  )
-    .toString()
-    .padStart(2, "0")} - ${Math.floor(chunk.end_time / 60)}:${Math.floor(
-    chunk.end_time % 60,
-  )
-    .toString()
-    .padStart(2, "0")}`;
-
-  return {
-    id: chunk.chunk_id,
-    title: chunk.title,
-    description: chunk.description,
-    duration: duration,
-    thumbnail: `https://image.mux.com/${chunk.playback_id}/thumbnail.png?width=480&time=${chunk.start_time}`,
-    startTime: chunk.start_time,
-    endTime: chunk.end_time,
-    chunkText: chunk.chunk_text,
-    similarity: chunk.similarity,
-    playbackId: chunk.playback_id,
-  };
-}
+import Footer from "./components/Footer";
+import { searchVideosWithReranking, type VideoSearchResult } from "./db/videos";
 
 interface HomeProps {
-  searchParams: Promise<{ q?: string; video?: string; time?: string }>;
+  searchParams: Promise<{ q?: string; video?: string; clip?: string }>;
 }
 
 export default async function Home({ searchParams }: HomeProps) {
-  const { q, video, time } = await searchParams;
+  const { q, video, clip } = await searchParams;
   const query = q || "";
   const selectedVideoId = video;
-  let videos: MediaItem[] = [];
+  const selectedClipIndex = clip ? Number.parseInt(clip, 10) : 0;
+  let searchResults: VideoSearchResult[] = [];
 
   if (query.trim()) {
     try {
-      const results = await searchVideos(query, 10);
-      videos = results.map(chunkToMediaItem);
+      searchResults = await searchVideosWithReranking(query);
     } catch (error) {
-      console.error("Error fetching video chunks:", error);
+      console.error("Error fetching video search results:", error);
     }
   }
 
-  const selectedVideo = selectedVideoId
-    ? videos.find((v) => v.id === selectedVideoId)
-    : null;
+  // Find selected video and clip
+  let selectedVideo: VideoSearchResult | null = null;
+  let selectedClip: { startTime: number; endTime: number } | null = null;
+
+  if (selectedVideoId) {
+    selectedVideo =
+      searchResults.find((result) => result.video.id === selectedVideoId) ||
+      null;
+    if (selectedVideo && selectedVideo.clips[selectedClipIndex]) {
+      const clip = selectedVideo.clips[selectedClipIndex];
+      selectedClip = {
+        startTime: clip.start_time_seconds,
+        endTime: clip.end_time_seconds,
+      };
+    }
+  }
+
+  const hasResults = searchResults.length > 0;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 pt-8 sm:pt-12">
-      <div className="w-full px-8">
-        <Header />
-        <SearchInput initialQuery={query} />
-      </div>
+    <div className="min-h-screen flex flex-col bg-[#d4cfc3]">
+      {hasResults ? (
+        <>
+          <div className="w-full px-8 pt-8 sm:pt-12">
+            <Header />
+            <SearchInput initialQuery={query} />
+          </div>
+          <SearchResultsGrid results={searchResults} />
+        </>
+      ) : (
+        <div className="flex-1 flex flex-col items-center justify-center px-8">
+          <div className="w-full max-w-2xl">
+            <Header />
+            <SearchInput initialQuery={query} />
+          </div>
+        </div>
+      )}
 
-      <SearchResultsGrid results={videos} />
+      <Footer />
 
-      {selectedVideo && (
+      {selectedVideo && selectedClip && (
         <VideoModal
           isOpen={true}
-          playbackId={selectedVideo.playbackId}
-          startTime={selectedVideo.startTime}
-          title={selectedVideo.title}
+          playbackId={selectedVideo.video.playback_id}
+          startTime={selectedClip.startTime}
+          title={selectedVideo.video.title}
         />
       )}
     </div>
