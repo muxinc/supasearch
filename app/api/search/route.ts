@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
     });
 
     const jobId = ids[0];
+    console.log(`[Search API] Started job with ID: ${jobId}`);
 
     // Return the Inngest event ID so the client can poll for results
     return NextResponse.json({
