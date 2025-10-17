@@ -13,9 +13,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Query Inngest API for run status
+    // Query Inngest API for runs associated with this event ID
     const url = `${INNGEST_API_URL}/v1/events/${runId}/runs`;
-    console.log(`[Status Check] Querying Inngest API: ${url}`);
+    console.log(`[Status Check] Querying Inngest API for event: ${runId}`);
+    console.log(`[Status Check] URL: ${url}`);
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -29,7 +30,8 @@ export async function GET(request: NextRequest) {
     const response = await fetch(url, { headers });
 
     if (!response.ok) {
-      console.error(`[Status Check] Inngest API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`[Status Check] Inngest API error: ${response.status}`, errorText);
       return NextResponse.json(
         { status: "processing", message: "Job is still processing" },
         { status: 200 },
@@ -37,7 +39,8 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
-    console.log(`[Status Check] runId: ${runId}, response:`, JSON.stringify(data, null, 2));
+    console.log(`[Status Check] Event ID: ${runId}`);
+    console.log(`[Status Check] Response:`, JSON.stringify(data, null, 2));
 
     // Check if we have any runs
     if (!data.data || data.data.length === 0) {
