@@ -98,24 +98,18 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
                 className="border border-gray-200 rounded p-3 cursor-pointer hover:bg-gray-50 transition-colors group"
                 onClick={() => handleClipClick(idx)}
               >
-                <div className="flex items-start gap-3">
-                  {/* Similarity badge */}
-                  <div className="flex-shrink-0 bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-medium">
-                    Similarity: ~0.{Math.floor(Math.random() * 20) + 80}
+                <div className="flex flex-col gap-2">
+                  {/* Time range with green styling */}
+                  <div className="flex items-center gap-2">
+                    <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-medium">
+                      {formatTime(clip.start_time_seconds)} -{" "}
+                      {formatTime(clip.end_time_seconds)}
+                    </span>
                   </div>
-
-                  {/* Clip content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-medium text-gray-900">
-                        {formatTime(clip.start_time_seconds)} -{" "}
-                        {formatTime(clip.end_time_seconds)}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-700 line-clamp-2 italic">
-                      "{clip.snippet}"
-                    </p>
-                  </div>
+                  {/* Snippet */}
+                  <p className="text-sm text-gray-700 line-clamp-2 italic">
+                    "{clip.snippet}"
+                  </p>
                 </div>
               </div>
             ))}
