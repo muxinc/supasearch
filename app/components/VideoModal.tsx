@@ -1,9 +1,9 @@
 "use client";
 
+import MuxPlayer from "@mux/mux-player-react";
 import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
-import MuxPlayer from "@mux/mux-player-react";
 
 interface VideoModalProps {
   isOpen: boolean;
@@ -27,7 +27,7 @@ export default function VideoModal({
     url.searchParams.delete("time");
     router.push(
       url.pathname +
-        (url.searchParams.toString() ? "?" + url.searchParams.toString() : ""),
+        (url.searchParams.toString() ? `?${url.searchParams.toString()}` : ""),
     );
   };
 
@@ -47,7 +47,7 @@ export default function VideoModal({
       document.removeEventListener("keydown", handleEscape);
       document.body.style.overflow = "unset";
     };
-  }, [isOpen]);
+  }, [isOpen, handleClose]);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === modalRef.current) {

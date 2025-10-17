@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
       console.log("No text track");
       return new Response("No text track in webhook", { status: 500 });
     }
-    const trackId = track.id;
+    const _trackId = track.id;
     const assetId = track.asset_id;
 
     console.log(`Creating embeddings for: ${assetId}`);

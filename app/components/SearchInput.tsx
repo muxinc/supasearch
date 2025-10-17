@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 interface SearchInputProps {
   initialQuery: string;
@@ -25,7 +25,7 @@ export default function SearchInput({ initialQuery }: SearchInputProps) {
 
       const newUrl = params.toString() ? `/?${params.toString()}` : "/";
       router.push(newUrl);
-    }, 300);
+    }, 3000);
 
     return () => clearTimeout(debounceTimer);
   }, [searchQuery, router, searchParams]);
@@ -45,7 +45,6 @@ export default function SearchInput({ initialQuery }: SearchInputProps) {
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder=""
           className="flex-1 text-base sm:text-lg text-black bg-transparent border-none outline-none py-2 sm:py-3 pr-3"
-          autoFocus
         />
       </div>
     </div>

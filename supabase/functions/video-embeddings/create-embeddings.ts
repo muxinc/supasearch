@@ -1,8 +1,8 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { openai } from "npm:@ai-sdk/openai";
+import type Mux from "npm:@mux/mux-node";
 import { embed, generateObject } from "npm:ai";
 import { z } from "npm:zod";
-import Mux from "npm:@mux/mux-node";
 
 type VideoChapter = {
   start: string; // Format: "HH:MM:SS"
@@ -55,15 +55,15 @@ function parseVTT(vttContent: string): VTTCue[] {
 
     if (timeMatch) {
       const startTime =
-        parseInt(timeMatch[1]) * 3600 +
-        parseInt(timeMatch[2]) * 60 +
-        parseInt(timeMatch[3]) +
-        parseInt(timeMatch[4]) / 1000;
+        parseInt(timeMatch[1], 10) * 3600 +
+        parseInt(timeMatch[2], 10) * 60 +
+        parseInt(timeMatch[3], 10) +
+        parseInt(timeMatch[4], 10) / 1000;
       const endTime =
-        parseInt(timeMatch[5]) * 3600 +
-        parseInt(timeMatch[6]) * 60 +
-        parseInt(timeMatch[7]) +
-        parseInt(timeMatch[8]) / 1000;
+        parseInt(timeMatch[5], 10) * 3600 +
+        parseInt(timeMatch[6], 10) * 60 +
+        parseInt(timeMatch[7], 10) +
+        parseInt(timeMatch[8], 10) / 1000;
 
       // Collect text lines until we hit an empty line or another timestamp
       const textLines: string[] = [];
@@ -124,9 +124,12 @@ async function getPlaybackIdFromAsset(
 }
 
 /**
- * Generates video metadata including title, description, topics, and chapters
+ * Generates video metadata including title, description, topics, and chapters with timeout
  */
-async function generateVideoMetadata(transcriptText: string): Promise<{
+async function generateVideoMetadataWithTimeout(
+  transcriptText: string,
+  timeoutMs: number = 20000,
+): Promise<{
   title: string;
   description: string;
   topics: string[];
@@ -135,10 +138,16 @@ async function generateVideoMetadata(transcriptText: string): Promise<{
   // Truncate transcript if it's too long (keep first ~15000 chars to avoid token limits)
   const truncatedTranscript =
     transcriptText.length > 15000
-      ? transcriptText.slice(0, 15000) + "..."
+      ? `${transcriptText.slice(0, 15000)}...`
       : transcriptText;
 
-  const { object } = await generateObject({
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`Metadata generation timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+
+  const generatePromise = generateObject({
     model: openai("gpt-5"),
     mode: "json",
     schema: z.object({
@@ -184,7 +193,53 @@ ${truncatedTranscript}
 Return ONLY the JSON object, no additional text.`,
   });
 
+  const { object } = await Promise.race([generatePromise, timeoutPromise]);
   return object;
+}
+
+/**
+ * Generates video metadata with retry logic (up to 4 retries)
+ */
+async function generateVideoMetadata(
+  transcriptText: string,
+  maxRetries: number = 4,
+): Promise<{
+  title: string;
+  description: string;
+  topics: string[];
+  chapters: VideoChapter[];
+}> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`Retry attempt ${attempt}/${maxRetries - 1} for metadata generation...`);
+        // 2 second delay between retries
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+
+      return await generateVideoMetadataWithTimeout(transcriptText, 20000);
+    } catch (error) {
+      lastError = error as Error;
+      console.error(
+        `Error generating metadata (attempt ${attempt + 1}/${maxRetries}):`,
+        error,
+      );
+
+      if (attempt === maxRetries - 1) {
+        // Final attempt failed, throw error
+        throw new Error(
+          `Failed to generate video metadata after ${maxRetries} attempts: ${lastError?.message}`,
+        );
+      }
+    }
+  }
+
+  // This should never be reached, but TypeScript needs it
+  throw new Error(
+    `Failed to generate video metadata: ${lastError?.message}`,
+  );
 }
 
 /**
@@ -207,7 +262,7 @@ async function prefetchImage(url: string): Promise<void> {
 /**
  * Gets thumbnail URL at the midpoint of the chunk
  */
-function getThumbnailUrl(
+function _getThumbnailUrl(
   playbackId: string,
   startTime: number,
   endTime: number,
@@ -219,11 +274,11 @@ function getThumbnailUrl(
 /**
  * Generates visual description from a thumbnail image with retry logic
  */
-async function generateVisualDescription(
+async function _generateVisualDescription(
   imageUrl: string,
   maxRetries: number = 2,
 ): Promise<string> {
-  let lastError: Error | null = null;
+  let _lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -266,7 +321,7 @@ async function generateVisualDescription(
 
       return object.description;
     } catch (error) {
-      lastError = error as Error;
+      _lastError = error as Error;
       console.error(
         `Error generating visual description (attempt ${attempt + 1}/${maxRetries + 1}):`,
         error,
@@ -306,7 +361,7 @@ function createEmbeddingText(
 async function createChunksFromVTT(
   cues: VTTCue[],
   topics: string[],
-  playbackId: string,
+  _playbackId: string,
   chunkDurationSeconds: number = 45,
 ): Promise<VideoChunk[]> {
   const chunks: VideoChunk[] = [];
@@ -326,7 +381,7 @@ async function createChunksFromVTT(
 
     // Check if adding this cue would exceed our chunk duration
     const chunkDuration = cue.endTime - chunkStartTime;
-    const potentialText = currentChunk + " " + cue.text;
+    const potentialText = `${currentChunk} ${cue.text}`;
 
     // Create chunk if we exceed duration OR if text gets too long (token limit safety)
     if (chunkDuration > chunkDurationSeconds || potentialText.length > 3000) {
@@ -368,7 +423,7 @@ async function createChunksFromVTT(
       currentChunk = cue.text;
     } else {
       // Add cue to current chunk
-      currentChunk += " " + cue.text;
+      currentChunk += ` ${cue.text}`;
     }
   }
 

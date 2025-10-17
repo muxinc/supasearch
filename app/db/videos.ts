@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
 import { openai } from "@ai-sdk/openai";
+import { createClient } from "@supabase/supabase-js";
 import { embed, generateObject } from "ai";
 import { z } from "zod";
 

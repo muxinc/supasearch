@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { MuxSync } from "npm:@mux/sync-engine@0.0.5";
 import { queueWorkflowsForEvent } from "npm:@mux/supabase@0.0.21";
+import { MuxSync } from "npm:@mux/sync-engine@0.0.5";
 
 // Load secrets from environment variables
 const databaseUrl =

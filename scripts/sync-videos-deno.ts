@@ -69,7 +69,6 @@ async function syncVideos() {
         await createEmbeddings(assetId, mux, supabase);
       } catch (error) {
         console.error(`Error processing asset ${assetId}:`, error);
-        continue;
       }
     }
 

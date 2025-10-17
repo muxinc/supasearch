@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { animate, stagger } from "animejs";
+import { useEffect, useRef } from "react";
 import SearchResultCard from "./SearchResultCard";
 
 interface ClipResult {

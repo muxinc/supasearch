@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import Header from "./Header";
-import SearchResultsGrid from "./SearchResultsGrid";
-import SearchInput from "./SearchInput";
-import VideoModal from "./VideoModal";
-import Footer from "./Footer";
+import { useEffect, useState } from "react";
 import type { VideoSearchResult } from "../db/videos";
+import Footer from "./Footer";
+import Header from "./Header";
+import SearchInput from "./SearchInput";
+import SearchResultsGrid from "./SearchResultsGrid";
+import VideoModal from "./VideoModal";
 
 export default function HomeClient() {
   const searchParams = useSearchParams();
@@ -22,9 +22,8 @@ export default function HomeClient() {
 
   const query = searchParams.get("q") || "";
   const selectedVideoId = searchParams.get("video");
-  const selectedClipIndex = searchParams.get("clip")
-    ? Number.parseInt(searchParams.get("clip")!, 10)
-    : 0;
+  const clipParam = searchParams.get("clip");
+  const selectedClipIndex = clipParam ? Number.parseInt(clipParam, 10) : 0;
 
   // Perform search when query changes
   useEffect(() => {
@@ -112,7 +111,7 @@ export default function HomeClient() {
     selectedVideo =
       searchResults.find((result) => result.video.id === selectedVideoId) ||
       null;
-    if (selectedVideo && selectedVideo.clips[selectedClipIndex]) {
+    if (selectedVideo?.clips[selectedClipIndex]) {
       const clip = selectedVideo.clips[selectedClipIndex];
       selectedClip = {
         startTime: clip.start_time_seconds,

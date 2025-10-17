@@ -1,11 +1,13 @@
 // Simple in-memory store for job results
 // In production, replace with Redis, database, or Inngest's state management
 
+import type { VideoSearchResult } from "@/app/db/videos";
+
 type JobStatus = "processing" | "completed" | "failed";
 
 interface JobData {
   status: JobStatus;
-  results?: any;
+  results?: VideoSearchResult[];
   error?: string;
   progress?: {
     step: number;

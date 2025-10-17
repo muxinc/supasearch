@@ -1,10 +1,10 @@
-import { inngest } from "../client";
-import { createClient } from "@supabase/supabase-js";
 import { openai } from "@ai-sdk/openai";
+import { createClient } from "@supabase/supabase-js";
 import { embed, generateObject } from "ai";
 import { z } from "zod";
-import type { VideoSearchResult, VideoChapter } from "@/app/db/videos";
+import type { VideoChapter, VideoSearchResult } from "@/app/db/videos";
 import { jobStore } from "@/app/lib/jobStore";
+import { inngest } from "../client";
 
 const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
