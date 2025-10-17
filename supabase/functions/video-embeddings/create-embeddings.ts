@@ -132,8 +132,15 @@ async function generateVideoMetadata(transcriptText: string): Promise<{
   topics: string[];
   chapters: VideoChapter[];
 }> {
+  // Truncate transcript if it's too long (keep first ~15000 chars to avoid token limits)
+  const truncatedTranscript =
+    transcriptText.length > 15000
+      ? transcriptText.slice(0, 15000) + "..."
+      : transcriptText;
+
   const { object } = await generateObject({
-    model: openai("gpt-4o"),
+    model: openai("gpt-5"),
+    mode: "json",
     schema: z.object({
       title: z.string().describe("A concise title for the video"),
       description: z
@@ -153,16 +160,28 @@ async function generateVideoMetadata(transcriptText: string): Promise<{
             title: z.string().describe("Title for this chapter/section"),
           }),
         )
+        .min(1)
         .describe(
           "Key chapters/sections of the video with timestamps and titles",
         ),
     }),
-    prompt: `Given the transcript for this video, generate a title, description, 3-5 key topics, and chapters with timestamps.
+    prompt: `You are a video content analyzer. Analyze the following transcript and generate metadata in valid JSON format.
 
-For chapters, identify the key sections/topics discussed in the video and provide a timestamp (in HH:MM:SS format) and title for each chapter.
+You MUST return a JSON object with these exact fields:
+{
+  "title": "string - A concise title (5-10 words)",
+  "description": "string - A brief description (1-3 sentences)",
+  "topics": ["array of 3-5 topic strings like 'web components', 'streaming'"],
+  "chapters": [
+    {"start": "HH:MM:SS", "title": "Chapter title"},
+    ...at least one chapter is required
+  ]
+}
 
 Transcript:
-${transcriptText}`,
+${truncatedTranscript}
+
+Return ONLY the JSON object, no additional text.`,
   });
 
   return object;
@@ -220,7 +239,7 @@ async function generateVisualDescription(
 
       // Generate visual description using OpenAI vision model
       const { object } = await generateObject({
-        model: openai("gpt-4o"),
+        model: openai("gpt-5"),
         schema: z.object({
           description: z
             .string()

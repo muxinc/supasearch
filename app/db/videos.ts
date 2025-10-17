@@ -205,6 +205,7 @@ export async function searchVideosWithReranking(
   }
 
   if (!chunks || chunks.length === 0) {
+    console.log(`[Retrieval] No chunks found for query: "${query}"`);
     return [];
   }
 
@@ -213,6 +214,10 @@ export async function searchVideosWithReranking(
   const uniqueAssetIds = [
     ...new Set(chunks.map((c: any) => c.mux_asset_id as string)),
   ];
+
+  console.log(
+    `[Retrieval] Retrieved ${chunks.length} chunks from ${uniqueVideoIds.length} videos`,
+  );
 
   // Fetch video metadata and playback_ids
   const [
@@ -331,13 +336,23 @@ Instructions:
 - For each video, return up to 3 clips with their time ranges
 - Each clip should have a snippet explaining why it's relevant
 - Sort videos by relevance (most relevant first)
-- Be selective - don't include videos just because they appear in the dataset`;
+- At a minimum you should always include at least 3 videos that each have 1 clip`;
+
+  console.log(`[Reranking] Sending ${retrievalDataset.length} videos to GPT-5 for reranking...`);
 
   const { object } = await generateObject({
-    model: openai("gpt-5-turbo"),
+    model: openai("gpt-5-mini"),
     schema: rerankingSchema,
     prompt,
   });
+
+  console.log(`[Reranking] GPT-5 returned ${object.results.length} videos`);
+
+  // Log details about clips per video
+  const clipCounts = object.results.map((r) => r.clips.length);
+  const totalClips = clipCounts.reduce((sum, count) => sum + count, 0);
+  console.log(`[Reranking] Total clips across all videos: ${totalClips}`);
+  console.log(`[Reranking] Clips per video: [${clipCounts.join(", ")}]`);
 
   // Step 4: Transform GPT results into VideoSearchResult format
   const results: VideoSearchResult[] = object.results
@@ -363,6 +378,8 @@ Instructions:
       };
     })
     .filter((r) => r !== null) as VideoSearchResult[];
+
+  console.log(`[Final] Returning ${results.length} videos with clips to the UI`);
 
   return results;
 }
