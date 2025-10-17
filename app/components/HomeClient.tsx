@@ -14,6 +14,11 @@ export default function HomeClient() {
   const [searchResults, setSearchResults] = useState<VideoSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchProgress, setSearchProgress] = useState<{
+    step: number;
+    totalSteps: number;
+    currentStep: string;
+  } | null>(null);
 
   const query = searchParams.get("q") || "";
   const selectedVideoId = searchParams.get("video");
@@ -27,32 +32,76 @@ export default function HomeClient() {
       if (!query.trim()) {
         setSearchResults([]);
         setHasSearched(false);
+        setSearchProgress(null);
         return;
       }
 
       setIsLoading(true);
       setHasSearched(true);
+      setSearchProgress(null);
 
       try {
+        // Start the search job
         const response = await fetch(
           `/api/search?${new URLSearchParams({ q: query })}`,
         );
         const data = await response.json();
 
-        if (data.results) {
-          setSearchResults(data.results);
-        } else {
+        if (data.error) {
+          console.error("Search error:", data.error);
           setSearchResults([]);
+          setIsLoading(false);
+          return;
         }
+
+        const { jobId } = data;
+
+        // Poll for results
+        const pollInterval = setInterval(async () => {
+          try {
+            const statusResponse = await fetch(
+              `/api/search/status?${new URLSearchParams({ jobId })}`,
+            );
+            const statusData = await statusResponse.json();
+
+            // Update progress if available
+            if (statusData.progress) {
+              setSearchProgress(statusData.progress);
+            }
+
+            if (statusData.status === "completed") {
+              clearInterval(pollInterval);
+              setSearchResults(statusData.results || []);
+              setIsLoading(false);
+              setSearchProgress(null);
+            } else if (statusData.status === "failed") {
+              clearInterval(pollInterval);
+              console.error("Search failed:", statusData.error);
+              setSearchResults([]);
+              setIsLoading(false);
+              setSearchProgress(null);
+            }
+          } catch (error) {
+            console.error("Status poll error:", error);
+          }
+        }, 1000); // Poll every second
+
+        // Cleanup on unmount or query change
+        return () => clearInterval(pollInterval);
       } catch (error) {
         console.error("Search error:", error);
         setSearchResults([]);
-      } finally {
         setIsLoading(false);
+        setSearchProgress(null);
       }
     };
 
-    performSearch();
+    const cleanup = performSearch();
+    return () => {
+      if (cleanup instanceof Promise) {
+        cleanup.then((fn) => fn?.());
+      }
+    };
   }, [query]);
 
   // Find selected video and clip
@@ -98,10 +147,14 @@ export default function HomeClient() {
                   <div className="w-6 h-6 border-3 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
                   <div className="text-left">
                     <div className="font-semibold text-gray-900">
-                      Searching videos...
+                      {searchProgress
+                        ? searchProgress.currentStep
+                        : "Starting search..."}
                     </div>
                     <div className="text-sm text-gray-600">
-                      Analyzing content with AI
+                      {searchProgress
+                        ? `Step ${searchProgress.step} of ${searchProgress.totalSteps}`
+                        : "Analyzing content with AI"}
                     </div>
                   </div>
                 </div>

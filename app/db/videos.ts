@@ -111,7 +111,9 @@ export async function searchVideoChunks(
   const uniqueAssetIds = [
     ...new Set(chunks.map((c: any) => c.mux_asset_id as string)),
   ];
-  const uniqueVideoIds = [...new Set(chunks.map((c: any) => c.video_id as string))];
+  const uniqueVideoIds = [
+    ...new Set(chunks.map((c: any) => c.video_id as string)),
+  ];
 
   // Fetch playback_ids from mux.assets
   const { data: assets, error: assetsError } = await supabaseMux
@@ -209,7 +211,9 @@ export async function searchVideosWithReranking(
   }
 
   // Get unique video_ids and mux_asset_ids
-  const uniqueVideoIds = [...new Set(chunks.map((c: any) => c.video_id as string))];
+  const uniqueVideoIds = [
+    ...new Set(chunks.map((c: any) => c.video_id as string)),
+  ];
   const uniqueAssetIds = [
     ...new Set(chunks.map((c: any) => c.mux_asset_id as string)),
   ];
@@ -337,7 +341,9 @@ Instructions:
 - Sort videos by relevance (most relevant first)
 - At a minimum you should always include at least 3 videos that each have 1 clip`;
 
-  console.log(`[Reranking] Sending ${retrievalDataset.length} videos to GPT-5 for reranking...`);
+  console.log(
+    `[Reranking] Sending ${retrievalDataset.length} videos to GPT-5 for reranking...`,
+  );
 
   const { object } = await generateObject({
     model: openai("gpt-5-mini"),
@@ -378,7 +384,9 @@ Instructions:
     })
     .filter((r) => r !== null) as VideoSearchResult[];
 
-  console.log(`[Final] Returning ${results.length} videos with clips to the UI`);
+  console.log(
+    `[Final] Returning ${results.length} videos with clips to the UI`,
+  );
 
   return results;
 }

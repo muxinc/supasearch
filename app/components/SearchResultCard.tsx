@@ -108,7 +108,8 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-medium text-gray-900">
-                        {formatTime(clip.start_time_seconds)} - {formatTime(clip.end_time_seconds)}
+                        {formatTime(clip.start_time_seconds)} -{" "}
+                        {formatTime(clip.end_time_seconds)}
                       </span>
                     </div>
                     <p className="text-sm text-gray-700 line-clamp-2 italic">
