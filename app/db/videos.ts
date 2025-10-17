@@ -179,7 +179,6 @@ export async function searchVideos(
   return searchVideoChunks(query, limit);
 }
 
-// New search function with retrieval + GPT-5 reranking
 export async function searchVideosWithReranking(
   query: string,
 ): Promise<VideoSearchResult[]> {
@@ -196,7 +195,7 @@ export async function searchVideosWithReranking(
   const { data: chunks, error } = await supabase.rpc("match_video_chunks", {
     query_embedding: embedding,
     similarity_threshold: -1,
-    match_count: 50,
+    match_count: 150,
   });
 
   if (error) {

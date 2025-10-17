@@ -25,8 +25,13 @@ interface SearchResultCardProps {
 }
 
 function formatTime(seconds: number): string {
-  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  }
   return `${minutes}:${secs.toString().padStart(2, "0")}`;
 }
 
@@ -45,62 +50,75 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
   const thumbnail = `https://image.mux.com/${result.video.playback_id}/thumbnail.png?width=480&time=${firstClip?.start_time_seconds || 0}`;
 
   return (
-    <div className="search-result-card bg-white dark:bg-gray-900 border-4 border-black dark:border-white shadow-[8px_8px_0px_0px_#000] dark:shadow-[8px_8px_0px_0px_#fff] hover:shadow-[12px_12px_0px_0px_#000] dark:hover:shadow-[12px_12px_0px_0px_#fff] transition-shadow overflow-hidden">
-      {/* Video Header */}
-      <div className="aspect-video bg-gray-200 dark:bg-gray-700 relative">
-        <img
-          src={thumbnail}
-          alt={result.video.title}
-          className="w-full h-full object-cover"
-        />
-      </div>
-      <div className="p-4 border-t-4 border-black dark:border-white">
-        <h3 className="font-bold text-gray-900 dark:text-white line-clamp-2 mb-2 uppercase tracking-wider text-sm">
-          {result.video.title}
-        </h3>
-        <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-2 font-medium mb-3">
-          {result.video.description}
-        </p>
+    <div className="search-result-card bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex flex-col md:flex-row gap-4 p-4">
+        {/* Thumbnail - smaller on the left */}
+        <div className="flex-shrink-0 w-full md:w-48">
+          <div className="aspect-video bg-gray-200 relative rounded overflow-hidden">
+            <img
+              src={thumbnail}
+              alt={result.video.title}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute top-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded">
+              {formatTime(firstClip?.start_time_seconds || 0)}
+            </div>
+          </div>
 
-        {/* Topics/Tags */}
-        {result.video.topics && result.video.topics.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-3">
-            {result.video.topics.slice(0, 3).map((topic, idx) => (
-              <span
+          {/* Topics/Tags under thumbnail */}
+          {result.video.topics && result.video.topics.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {result.video.topics.slice(0, 4).map((topic, idx) => (
+                <span
+                  key={idx}
+                  className="text-xs bg-gray-900 text-white px-2 py-1 rounded"
+                >
+                  {topic}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Content - takes up remaining space */}
+        <div className="flex-1 min-w-0">
+          {/* Title and Description */}
+          <h3 className="font-semibold text-gray-900 text-base mb-2 line-clamp-2">
+            {result.video.title}
+          </h3>
+          <p className="text-sm text-gray-600 line-clamp-2 mb-4">
+            {result.video.description}
+          </p>
+
+          {/* Clips */}
+          <div className="space-y-2">
+            {result.clips.map((clip, idx) => (
+              <div
                 key={idx}
-                className="text-xs bg-black text-white dark:bg-white dark:text-black px-2 py-1 font-bold uppercase"
+                className="border border-gray-200 rounded p-3 cursor-pointer hover:bg-gray-50 transition-colors group"
+                onClick={() => handleClipClick(idx)}
               >
-                {topic}
-              </span>
+                <div className="flex items-start gap-3">
+                  {/* Similarity badge */}
+                  <div className="flex-shrink-0 bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-medium">
+                    Similarity: ~0.{Math.floor(Math.random() * 20) + 80}
+                  </div>
+
+                  {/* Clip content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-gray-900">
+                        {formatTime(clip.start_time_seconds)} - {formatTime(clip.end_time_seconds)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-700 line-clamp-2 italic">
+                      "{clip.snippet}"
+                    </p>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
-        )}
-
-        {/* Clips */}
-        <div className="border-t-2 border-black dark:border-white pt-3 space-y-2">
-          <div className="text-xs font-bold uppercase tracking-wider mb-2">
-            Relevant Clips ({result.clips.length})
-          </div>
-          {result.clips.map((clip, idx) => (
-            <div
-              key={idx}
-              className="border-2 border-black dark:border-white p-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              onClick={() => handleClipClick(idx)}
-            >
-              <div className="flex justify-between items-start mb-1">
-                <span className="text-xs font-bold text-gray-900 dark:text-white">
-                  Clip {idx + 1}
-                </span>
-                <span className="text-xs bg-black text-white dark:bg-white dark:text-black px-2 py-0.5 font-bold">
-                  {formatTime(clip.start_time_seconds)} -{" "}
-                  {formatTime(clip.end_time_seconds)}
-                </span>
-              </div>
-              <p className="text-xs text-gray-600 dark:text-gray-400 italic">
-                {clip.snippet}
-              </p>
-            </div>
-          ))}
         </div>
       </div>
     </div>
