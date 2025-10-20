@@ -242,7 +242,7 @@ Instructions:
       );
 
       const { object } = await generateObject({
-        model: openai("gpt-5-mini"),
+        model: openai("gpt-5-nano"),
         schema: rerankingSchema,
         prompt,
       });

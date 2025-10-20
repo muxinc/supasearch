@@ -148,7 +148,7 @@ async function generateVideoMetadataWithTimeout(
   });
 
   const generatePromise = generateObject({
-    model: openai("gpt-5"),
+    model: openai("gpt-5-nano"),
     mode: "json",
     schema: z.object({
       title: z.string().describe("A concise title for the video"),
