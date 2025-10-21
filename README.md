@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
 ## Getting Started
 
-First, run the development server:
+> Make sure you've added all .env vars required before proceeding
+
+### Requirements
+
+- Docker desktop
+- Deno `curl -fsSL https://deno.land/install.sh | sh`
+
+### Install dependencies
+
+`npm install`
+
+and
+
+`deno install`
+
+### Serving the application
+
+First, start the Supabase database.
+
+```bash
+npx supabase start
+```
+
+If this is your first time running this command, your container layers will download. This takes a second, so go grab some water - you're dehydrated.
+
+
+Next, open a new terminal tab and serve your Supabase functions locally:
+
+```bash
+npx supabase functions serve
+```
+
+Next, open a third tab and start the Inngest queue server:
+
+```bash
+npx inngest-cli@latest dev
+```
+
+Finally, run the Next.js development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Seeding the database
+```bash
+npm run mux-backfill
+```
 
-## Learn More
+## Create the video embeddings
+This will run the createEmbedding function for each asset in our database
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run videos-backfill-existing # All assets
+npm run videos-backfill-missing  # Only assets with missing embeddings
+```
