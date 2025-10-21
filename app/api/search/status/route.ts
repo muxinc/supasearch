@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 const INNGEST_API_URL = process.env.INNGEST_API_URL || "http://127.0.0.1:8288";
-const INNGEST_EVENT_KEY = process.env.INNGEST_EVENT_KEY;
+const INNGEST_SIGNING_KEY = process.env.INNGEST_SIGNING_KEY;
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -23,8 +23,8 @@ export async function GET(request: NextRequest) {
     };
 
     // Only add auth header in production
-    if (INNGEST_EVENT_KEY) {
-      headers.Authorization = `Bearer ${INNGEST_EVENT_KEY}`;
+    if (INNGEST_SIGNING_KEY) {
+      headers.Authorization = `Bearer ${INNGEST_SIGNING_KEY}`;
     }
 
     const response = await fetch(url, { headers });
