@@ -18,7 +18,7 @@ export const searchVideoJob = inngest.createFunction(
   { event: "search/videos.requested" },
   async ({ event, step }) => {
     const { query } = event.data;
-    const jobId = event.id; // Use Inngest's event ID
+    const jobId = event.id as string; // Use Inngest's event ID
 
     // Initialize job status
     jobStore.set(jobId, {
