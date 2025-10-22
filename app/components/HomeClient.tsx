@@ -68,6 +68,16 @@ export default function HomeClient() {
               setSearchProgress(statusData.progress);
             }
 
+            // WATERFALL UX: Display partial results immediately as they arrive
+            // This allows users to see video matches before clips are fully processed
+            if (statusData.results && statusData.results.length > 0) {
+              setSearchResults(statusData.results);
+              // Keep loading state active until fully completed
+              if (statusData.status === "completed") {
+                setIsLoading(false);
+              }
+            }
+
             if (statusData.status === "completed") {
               clearInterval(pollInterval);
               setSearchResults(statusData.results || []);
@@ -83,7 +93,7 @@ export default function HomeClient() {
           } catch (error) {
             console.error("Status poll error:", error);
           }
-        }, 1000); // Poll every second
+        }, 500); // Poll every 500ms for faster updates
 
         // Cleanup on unmount or query change
         return () => clearInterval(pollInterval);
@@ -121,15 +131,27 @@ export default function HomeClient() {
   }
 
   const hasResults = searchResults.length > 0;
-  const showResults = hasSearched && !isLoading;
+  const showResultsGrid = hasSearched && hasResults;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#d4cfc3]">
-      {showResults && hasResults ? (
+      {showResultsGrid ? (
         <>
           <div className="w-full px-8 pt-8 sm:pt-12">
             <Header />
             <SearchInput initialQuery={query} />
+
+            {/* Loading indicator for waterfall UX (shown while clips load) */}
+            {isLoading && (
+              <div className="mt-4 flex items-center justify-center gap-3 bg-white/80 px-4 py-3 rounded-lg">
+                <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
+                <div className="text-sm text-gray-900">
+                  {searchProgress
+                    ? searchProgress.currentStep
+                    : "Refining clips..."}
+                </div>
+              </div>
+            )}
           </div>
           <SearchResultsGrid results={searchResults} />
         </>
@@ -161,7 +183,7 @@ export default function HomeClient() {
             )}
 
             {/* No Results State */}
-            {showResults && !hasResults && query && (
+            {hasSearched && !hasResults && !isLoading && query && (
               <div className="mt-12 text-center text-gray-600">
                 <p className="text-lg">No results found for "{query}"</p>
                 <p className="text-sm mt-2">Try a different search query</p>

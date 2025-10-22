@@ -92,27 +92,36 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
 
           {/* Clips */}
           <div className="space-y-2">
-            {result.clips.map((clip, idx) => (
-              <div
-                key={idx}
-                className="border border-gray-200 rounded p-3 cursor-pointer hover:bg-gray-50 transition-colors group"
-                onClick={() => handleClipClick(idx)}
-              >
-                <div className="flex flex-col gap-2">
-                  {/* Time range with green styling */}
-                  <div className="flex items-center gap-2">
-                    <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-medium">
-                      {formatTime(clip.start_time_seconds)} -{" "}
-                      {formatTime(clip.end_time_seconds)}
-                    </span>
+            {result.clips.length > 0 ? (
+              result.clips.map((clip, idx) => (
+                <div
+                  key={idx}
+                  className="border border-gray-200 rounded p-3 cursor-pointer hover:bg-gray-50 transition-colors group"
+                  onClick={() => handleClipClick(idx)}
+                >
+                  <div className="flex flex-col gap-2">
+                    {/* Time range with green styling */}
+                    <div className="flex items-center gap-2">
+                      <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-medium">
+                        {formatTime(clip.start_time_seconds)} -{" "}
+                        {formatTime(clip.end_time_seconds)}
+                      </span>
+                    </div>
+                    {/* Snippet */}
+                    <p className="text-sm text-gray-700 line-clamp-2 italic">
+                      "{clip.snippet}"
+                    </p>
                   </div>
-                  {/* Snippet */}
-                  <p className="text-sm text-gray-700 line-clamp-2 italic">
-                    "{clip.snippet}"
-                  </p>
+                </div>
+              ))
+            ) : (
+              <div className="border border-gray-200 rounded p-3 bg-gray-50">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className="w-3 h-3 border-2 border-gray-400 border-t-gray-700 rounded-full animate-spin" />
+                  <span>Finding relevant clips...</span>
                 </div>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
