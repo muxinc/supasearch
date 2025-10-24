@@ -47,7 +47,10 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
   };
 
   const firstClip = result.clips[0];
-  const thumbnail = `https://image.mux.com/${result.video.playback_id}/thumbnail.png?width=480&time=${firstClip?.start_time_seconds || 0}`;
+  const thumbnailBase = `https://image.mux.com/${result.video.playback_id}/thumbnail.png`;
+  const thumbnail = firstClip
+    ? `${thumbnailBase}?width=480&time=${firstClip.start_time_seconds}`
+    : `${thumbnailBase}?width=480`;
 
   return (
     <div className="search-result-card bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
@@ -60,9 +63,11 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
               alt={result.video.title}
               className="w-full h-full object-cover"
             />
-            <div className="absolute top-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded">
-              {formatTime(firstClip?.start_time_seconds || 0)}
-            </div>
+            {firstClip && (
+              <div className="absolute top-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded">
+                {formatTime(firstClip.start_time_seconds)}
+              </div>
+            )}
           </div>
 
           {/* Topics/Tags under thumbnail */}
