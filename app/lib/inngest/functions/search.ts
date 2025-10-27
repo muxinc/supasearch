@@ -2,13 +2,135 @@ import { openai } from "@ai-sdk/openai";
 import { createClient } from "@supabase/supabase-js";
 import { generateObject } from "ai";
 import { z } from "zod";
-import type { VideoChapter, VideoSearchResult } from "@/app/db/videos";
+import type { VideoChapter, VideoSearchResult, ClipResult } from "@/app/db/videos";
 import { searchVideoChunks } from "@/app/db/videos";
-import { jobStore } from "@/app/lib/jobStore";
 import { inngest } from "../client";
+import { searchJobChannel } from "../channels";
 
 const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+// Schema for per-video clip extraction
+const clipExtractionSchema = z.object({
+  clips: z
+    .array(
+      z.object({
+        start_time_seconds: z
+          .number()
+          .describe("Start time of the clip in seconds"),
+        end_time_seconds: z
+          .number()
+          .describe("End time of the clip in seconds"),
+        snippet: z
+          .string()
+          .describe(
+            "A brief explanation of why this clip is relevant to the query",
+          ),
+        relevance: z
+          .enum(["exact", "related"])
+          .describe(
+            "exact: directly addresses the query topic | related: conceptually related but not a direct match",
+          ),
+      }),
+    )
+    .min(1)
+    .max(3)
+    .describe("1-3 most relevant clips from this video. MUST return at least one clip."),
+});
+
+// Function to extract clips from a single video and publish results via realtime
+export const extractClipsFromVideo = inngest.createFunction(
+  {
+    id: "extract-clips-from-video",
+    name: "Extract Clips from Video",
+  },
+  { event: "search/video.extract-clips" },
+  async ({ event, publish }) => {
+    const { searchId, videoId, query, videoMetadata } = event.data;
+
+    console.log(`[Extract Clips] Starting extraction for video ${videoId} in search ${searchId}`);
+
+    try {
+      // Check if we have VTT transcript
+      if (!videoMetadata?.transcript_en_vtt) {
+        console.log(`[Extract Clips] No VTT transcript found for video ${videoId}`);
+        await publish(
+          searchJobChannel(searchId).clips({
+            videoId,
+            clips: [],
+          })
+        );
+        return { videoId, clips: [] };
+      }
+
+      const vttLength = videoMetadata.transcript_en_vtt.length;
+      console.log(`[Extract Clips] Processing video ${videoId} with VTT length: ${vttLength} characters`);
+
+      const prompt = `You are a clip extraction expert. This video was returned by semantic embedding search, meaning it's already been determined to be relevant to the user's query. Your job is to find the best moments that explain WHY this video matches.
+
+User Query: "${query}"
+
+Video: "${videoMetadata.title || "Untitled"}"
+Description: "${videoMetadata.description || ""}"
+${videoMetadata?.chapters ? `Chapters: ${JSON.stringify(videoMetadata.chapters)}` : ""}
+
+VTT Transcript:
+${videoMetadata.transcript_en_vtt}
+
+CRITICAL INSTRUCTIONS:
+- You MUST return at least 1 clip, and up to 3 clips maximum
+- Since this video was matched by embedding search, there IS a semantic connection - find it!
+- Mark clips as "exact" if they directly address the query topic
+- Mark clips as "related" if they discuss conceptually related topics (e.g., query is "smell" but video discusses other human senses like vision/hearing)
+- Each clip should be 30-60 seconds long and capture complete thoughts/sentences
+- Use the VTT timestamps to determine start_time_seconds and end_time_seconds
+- In the snippet, explain the connection between the clip and the query:
+  - For "exact" matches: Explain how it directly addresses the query
+  - For "related" matches: Explain the conceptual connection (e.g., "Discusses human vision and hearing, which are related senses to smell")
+
+THINK SEMANTICALLY: If the query is about "smell", consider:
+- Direct mentions of smell, scent, olfactory
+- Related senses (taste, touch, hearing, vision)
+- Sensory perception in general
+- Human experience and consciousness
+- Scientific discussions of perception
+
+The embedding search found this video relevant - trust that judgment and find the best moment that shows the connection.`;
+
+      const startTime = Date.now();
+      const { object } = await generateObject({
+        model: openai("gpt-5-nano"),
+        schema: clipExtractionSchema,
+        prompt,
+      });
+      const duration = Date.now() - startTime;
+
+      console.log(`[Extract Clips] Video ${videoId} processed in ${duration}ms, found ${object.clips.length} clips`);
+
+      // Publish clips via realtime
+      await publish(
+        searchJobChannel(searchId).clips({
+          videoId,
+          clips: object.clips,
+        })
+      );
+
+      return { videoId, clips: object.clips };
+    } catch (error) {
+      console.error(`[Extract Clips] Error extracting clips for video ${videoId}:`, error);
+
+      // Publish error via realtime
+      await publish(
+        searchJobChannel(searchId).error({
+          videoId,
+          message: error instanceof Error ? error.message : "Unknown error",
+        })
+      );
+
+      return { videoId, clips: [] };
+    }
+  }
+);
 
 export const searchVideoJob = inngest.createFunction(
   {
@@ -16,218 +138,173 @@ export const searchVideoJob = inngest.createFunction(
     name: "Search Videos with Reranking",
   },
   { event: "search/videos.requested" },
-  async ({ event, step }) => {
-    const { query } = event.data;
-    const jobId = event.id as string; // Use Inngest's event ID
+  async ({ event, step, publish }) => {
+    const { query, searchId } = event.data;
 
-    // Initialize job status
-    jobStore.set(jobId, {
-      status: "processing",
-      progress: { step: 0, totalSteps: 2, currentStep: "Starting..." },
-    });
+    console.log(`[SearchJob] Received request searchId=${searchId} query="${query}"`);
 
-    // Step 1: Search video chunks (handles embedding creation and retrieval)
-    const enrichedChunks = await step.run("search-video-chunks", async () => {
-      jobStore.updateProgress(jobId, {
-        step: 1,
-        totalSteps: 2,
-        currentStep: "Searching video database",
-      });
-
-      console.log(`[Step 1] Searching video chunks for query: "${query}"`);
+    // Step 1: Search and publish initial video results
+    const partialResults = await step.run("search-and-publish-videos", async () => {
+      console.log(`[SearchJob][Step1] Searching video chunks for "${query}"`);
 
       const chunks = await searchVideoChunks(query, 150);
 
       if (chunks.length === 0) {
-        console.log(`[Step 1] No chunks found for query: "${query}"`);
+        console.log(`[SearchJob][Step1] No chunks found for "${query}"`);
+        await publish(
+          searchJobChannel(searchId).videos({
+            videos: [],
+            status: "completed",
+          })
+        );
         return [];
       }
 
       const uniqueVideoIds = [...new Set(chunks.map((c) => c.video_id))];
       console.log(
-        `[Step 1] Retrieved ${chunks.length} chunks from ${uniqueVideoIds.length} videos`,
+        `[SearchJob][Step1] Retrieved ${chunks.length} chunks across ${uniqueVideoIds.length} videos`,
       );
 
-      return chunks;
-    });
+      // Group chunks by video and calculate top similarity per video
+      const videoMap = new Map<string, {
+        chunk: typeof chunks[0];
+        topSimilarity: number;
+        chunkCount: number;
+      }>();
 
-    // Step 2: Re-rank results using GPT
-    const finalResults = await step.run("rerank-results", async () => {
-      jobStore.updateProgress(jobId, {
-        step: 2,
-        totalSteps: 2,
-        currentStep: "Re-ranking with AI",
-      });
-
-      console.log(`[Step 2] Re-ranking results with GPT-5...`);
-
-      if (enrichedChunks.length === 0) {
-        console.log(`[Step 2] No chunks to rerank`);
-        return [];
+      for (const chunk of chunks) {
+        const existing = videoMap.get(chunk.video_id);
+        const similarity = chunk.similarity_score;
+        if (
+          !existing ||
+          (typeof similarity === "number" &&
+            similarity > existing.topSimilarity)
+        ) {
+          videoMap.set(chunk.video_id, {
+            chunk,
+            topSimilarity: similarity ?? 0,
+            chunkCount: (existing?.chunkCount || 0) + 1,
+          });
+        } else {
+          videoMap.set(chunk.video_id, {
+            ...existing,
+            chunkCount: existing.chunkCount + 1,
+          });
+        }
       }
 
-      // Fetch additional video metadata (topics and chapters) that searchVideoChunks doesn't return
-      const uniqueVideoIds = [...new Set(enrichedChunks.map((c) => c.video_id))];
+      // Fetch topics for partial results
+      const videoIds = Array.from(videoMap.keys());
       const supabase = createClient(supabaseUrl, supabaseKey);
+      const { data: videos } = await supabase
+        .from("videos")
+        .select("id, topics")
+        .in("id", videoIds);
+
+      const videoTopicsMap = new Map(videos?.map((v) => [v.id, v.topics]) || []);
+
+      // Create partial results (videos only, clips pending)
+      const partialResults: VideoSearchResult[] = Array.from(videoMap.entries())
+        .sort(([, a], [, b]) => b.topSimilarity - a.topSimilarity)
+        .slice(0, 10) // Top 10 videos
+        .filter(([, { chunk }]) => chunk.playback_id) // Filter out videos without playback_id
+        .map(([videoId, { chunk }]) => ({
+          video: {
+            id: chunk.video_id,
+            mux_asset_id: chunk.mux_asset_id,
+            title: chunk.title || "",
+            description: chunk.description || "",
+            playback_id: chunk.playback_id!,
+            topics: videoTopicsMap.get(videoId) || [],
+            chapters: undefined, // Will be filled in step 3
+          },
+          clips: [], // Empty initially - will be filled in step 3
+        }));
+
+      console.log(
+        `[SearchJob][Step1] Prepared ${partialResults.length} partial video results`,
+      );
+
+      // Publish initial video results via realtime
+      console.log(`[SearchJob][Step1] About to publish to channel: search:${searchId}`);
+      console.log(`[SearchJob][Step1] Publishing data:`, {
+        videoCount: partialResults.length,
+        status: "initial",
+        firstVideo: partialResults[0] ? {
+          id: partialResults[0].video.id,
+          title: partialResults[0].video.title
+        } : null
+      });
+
+      try {
+        await publish(
+          searchJobChannel(searchId).videos({
+            videos: partialResults,
+            status: "initial",
+          })
+        );
+        console.log(
+          `[SearchJob][Step1] ✅ Successfully published ${partialResults.length} initial video results`,
+        );
+      } catch (error) {
+        console.error(`[SearchJob][Step1] ❌ Failed to publish video results:`, error);
+        throw error;
+      }
+
+      return partialResults;
+    });
+
+    // Step 2: Fan-out clip extraction to individual functions
+    await step.run("fan-out-clip-extraction", async () => {
+      if (!partialResults || partialResults.length === 0) {
+        console.log(`[SearchJob][Step2] No videos to extract clips from`);
+        return;
+      }
+
+      console.log(
+        `[SearchJob][Step2] Fanning out clip extraction for ${partialResults.length} videos`,
+      );
+
+      // Fetch video metadata for clip extraction
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      const videoIds = partialResults.map((r) => r.video.id);
 
       const { data: videos, error: videosError } = await supabase
         .from("videos")
-        .select("id, topics, chapters")
-        .in("id", uniqueVideoIds);
+        .select("id, title, description, topics, chapters, transcript_en_vtt")
+        .in("id", videoIds);
 
       if (videosError) {
-        console.error("[Step 2] Error fetching video topics/chapters:", videosError);
+        console.error("[SearchJob][Step2] Error fetching video metadata:", videosError);
       }
 
       const videoMetadataMap = new Map(videos?.map((v) => [v.id, v]) || []);
 
-      // Group chunks by video_id
-      const videoChunksMap = new Map<string, typeof enrichedChunks>();
-      for (const chunk of enrichedChunks) {
-        if (!videoChunksMap.has(chunk.video_id)) {
-          videoChunksMap.set(chunk.video_id, []);
-        }
-        videoChunksMap.get(chunk.video_id)?.push(chunk);
-      }
-
-      // Build the retrieval dataset for GPT
-      const retrievalDataset = Array.from(videoChunksMap.entries()).map(
-        ([videoId, videoChunks]) => {
-          const videoMetadata = videoMetadataMap.get(videoId);
-          return {
-            video: {
-              id: videoId,
-              title: videoChunks[0]?.title || "",
-              description: videoChunks[0]?.description || "",
-              chapters: videoMetadata?.chapters || [],
-              chunks: videoChunks.map((chunk) => ({
-                chunk_text: chunk.chunk_text,
-                visual_description: chunk.visual_description || "",
-                start_time: chunk.start_time || 0,
-                end_time: chunk.end_time || 0,
-              })),
-            },
-          };
+      // Send events to trigger clip extraction functions (fan-out)
+      const events = videoIds.map((videoId) => ({
+        name: "search/video.extract-clips",
+        data: {
+          searchId,
+          videoId,
+          query,
+          videoMetadata: videoMetadataMap.get(videoId),
         },
-      );
+      }));
 
-      // Use GPT-5 to rerank and extract relevant clips
-      const rerankingSchema = z.object({
-        results: z.array(
-          z.object({
-            video_id: z.string().describe("The ID of the video"),
-            clips: z
-              .array(
-                z.object({
-                  start_time_seconds: z
-                    .number()
-                    .describe("Start time of the clip in seconds"),
-                  end_time_seconds: z
-                    .number()
-                    .describe("End time of the clip in seconds"),
-                  snippet: z
-                    .string()
-                    .describe(
-                      "A brief explanation of why this clip is relevant to the query",
-                    ),
-                }),
-              )
-              .max(3)
-              .describe("Up to 3 most relevant clips from this video"),
-          }),
-        ),
-      });
-
-      const prompt = `You are a search relevance expert. Given a user's query and a list of videos with their chunks, you need to:
-
-1. Analyze which videos are most relevant to the query
-2. For each relevant video, identify up to 3 specific clips (time ranges) that best answer the query
-3. Filter out videos that are not relevant to the query
-4. Sort the results by relevance (most relevant first)
-
-User Query: "${query}"
-
-Videos and Chunks:
-${JSON.stringify(retrievalDataset, null, 2)}
-
-Instructions:
-- Only include videos that are actually relevant to the query
-- For each video, return up to 3 clips with their time ranges
-- Each clip should have a snippet explaining why it's relevant
-- Sort videos by relevance (most relevant first)
-- At a minimum you should always include at least 3 videos that each have 1 clip`;
+      await inngest.send(events);
 
       console.log(
-        `[Step 2] Sending ${retrievalDataset.length} videos to GPT-5 for reranking...`,
+        `[SearchJob][Step2] Fanned out ${events.length} clip extraction jobs`,
       );
-
-      const { object } = await generateObject({
-        model: openai("gpt-5-nano"),
-        schema: rerankingSchema,
-        prompt,
-      });
-
-      console.log(`[Step 2] GPT-5 returned ${object.results.length} videos`);
-
-      // Log details about clips per video
-      const clipCounts = object.results.map((r) => r.clips.length);
-      const totalClips = clipCounts.reduce((sum, count) => sum + count, 0);
-      console.log(`[Step 2] Total clips across all videos: ${totalClips}`);
-      console.log(`[Step 2] Clips per video: [${clipCounts.join(", ")}]`);
-
-      // Create lookup maps from enriched chunks for faster access
-      const chunksByVideoId = new Map<string, typeof enrichedChunks[0]>();
-      for (const chunk of enrichedChunks) {
-        if (!chunksByVideoId.has(chunk.video_id)) {
-          chunksByVideoId.set(chunk.video_id, chunk);
-        }
-      }
-
-      // Transform GPT results into VideoSearchResult format
-      const results: VideoSearchResult[] = object.results
-        .map((result) => {
-          const chunk = chunksByVideoId.get(result.video_id);
-          const videoMetadata = videoMetadataMap.get(result.video_id);
-
-          if (!chunk || !chunk.playback_id) {
-            return null;
-          }
-
-          return {
-            video: {
-              id: chunk.video_id,
-              mux_asset_id: chunk.mux_asset_id,
-              title: chunk.title || "",
-              description: chunk.description || "",
-              playback_id: chunk.playback_id,
-              topics: videoMetadata?.topics || [],
-              chapters: videoMetadata?.chapters as VideoChapter[] | undefined,
-            },
-            clips: result.clips,
-          };
-        })
-        .filter((r) => r !== null) as VideoSearchResult[];
-
-      console.log(`[Step 2] Returning ${results.length} videos with clips`);
-
-      return results;
     });
 
-    // Store final results in job store
-    console.log(
-      `[Job Store] Storing results for jobId: ${jobId}, results count: ${finalResults.length}`,
-    );
-    jobStore.set(jobId, {
-      status: "completed",
-      results: finalResults,
-    });
-    console.log(`[Job Store] Results stored successfully`);
+    console.log(`[SearchJob] Completed for searchId=${searchId}`);
 
     return {
-      jobId,
+      searchId,
       query,
-      results: finalResults,
-      completedAt: new Date().toISOString(),
+      status: "processing",
+      message: "Clip extraction in progress",
     };
   },
 );

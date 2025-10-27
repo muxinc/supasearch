@@ -8,6 +8,7 @@ interface ClipResult {
   start_time_seconds: number;
   end_time_seconds: number;
   snippet: string;
+  relevance: "exact" | "related";
 }
 
 interface VideoResult {
@@ -61,7 +62,10 @@ export default function SearchResultsGrid({ results }: SearchResultsGridProps) {
 
   return (
     <div className="mt-8 px-8 pb-12">
-      <div ref={gridRef} className="max-w-6xl mx-auto space-y-4">
+      <div
+        ref={gridRef}
+        className="max-w-6xl mx-auto grid grid-cols-1 gap-6 sm:grid-cols-2"
+      >
         {results.map((result) => (
           <SearchResultCard key={result.video.id} result={result} />
         ))}

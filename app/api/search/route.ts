@@ -5,26 +5,35 @@ import { inngest } from "@/app/lib/inngest/client";
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const query = searchParams.get("q");
+  const searchId = searchParams.get("searchId");
 
   if (!query || !query.trim()) {
     return NextResponse.json({ results: [] });
   }
 
+  if (!searchId || !searchId.trim()) {
+    return NextResponse.json(
+      { error: "searchId is required" },
+      { status: 400 },
+    );
+  }
+
   try {
-    // Trigger the Inngest job
-    const { ids } = await inngest.send({
+    console.log(`[Search API] Starting job with searchId: ${searchId}`);
+
+    // Trigger the Inngest job with the client-provided searchId
+    await inngest.send({
       name: "search/videos.requested",
       data: {
         query,
+        searchId,
       },
     });
 
-    const jobId = ids[0];
-    console.log(`[Search API] Started job with ID: ${jobId}`);
+    console.log(`[Search API] Job started with searchId: ${searchId}`);
 
-    // Return the Inngest event ID so the client can poll for results
     return NextResponse.json({
-      jobId,
+      searchId,
       status: "processing",
       message: "Search job started",
     });
