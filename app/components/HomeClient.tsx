@@ -138,8 +138,10 @@ export default function HomeClient() {
       {showResultsGrid ? (
         <>
           <div className="w-full px-8 pt-8 sm:pt-12">
-            <Header />
-            <SearchInput initialQuery={query} />
+            <div className="max-w-2xl mx-auto">
+              <Header />
+              <SearchInput initialQuery={query} />
+            </div>
 
             {/* Loading indicator for waterfall UX (shown while clips load) */}
             {isLoading && (
