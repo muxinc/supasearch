@@ -80,7 +80,6 @@ export default function VideoModal({
           <MuxPlayer
             playbackId={playbackId}
             startTime={startTime}
-            controls
             style={{ width: "100%", height: "100%" }}
           />
         </div>

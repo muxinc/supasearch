@@ -5,7 +5,7 @@ import { searchJobChannel } from "@/app/lib/inngest/channels";
 import { getSubscriptionToken, Realtime } from "@inngest/realtime";
 
 export type SearchJobChannelToken = Realtime.Token<
-  typeof searchJobChannel,
+  ReturnType<typeof searchJobChannel>,
   ["videos", "clips", "error"]
 >;
 
@@ -19,12 +19,11 @@ export async function fetchRealtimeSubscriptionToken(
   try {
     // Create a token that allows subscribing to all topics for this search job
     const token = await getSubscriptionToken(inngest, {
-      channel: `search:${jobId}`,
+      channel: searchJobChannel(jobId),
       topics: ["videos", "clips", "error"],
     });
 
     console.log(`[Server Action] ✅ Token generated successfully for jobId: ${jobId}`);
-    console.log(`[Server Action] Token expires at:`, token.expiresAt);
 
     return token;
   } catch (error) {

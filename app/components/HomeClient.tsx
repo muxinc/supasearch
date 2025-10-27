@@ -44,8 +44,7 @@ export default function HomeClient() {
       const token = await fetchRealtimeSubscriptionToken(searchIdRef.current);
       console.log("[Token Fetch] ✅ Token received successfully:", {
         hasToken: !!token,
-        channel: `search:${searchIdRef.current}`,
-        expiresAt: token.expiresAt
+        channel: `search:${searchIdRef.current}`
       });
       return token;
     } catch (error) {
