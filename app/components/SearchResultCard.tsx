@@ -6,6 +6,7 @@ interface ClipResult {
   start_time_seconds: number;
   end_time_seconds: number;
   snippet: string;
+  relevance: "exact" | "related";
 }
 
 interface VideoResult {
@@ -78,7 +79,7 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
         )}
 
         {/* Overlay for title & description */}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/70 to-transparent p-6">
           <h3 className="text-white text-xl font-semibold leading-tight mb-2 line-clamp-2">
             {result.video.title}
           </h3>
@@ -105,17 +106,24 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
               onClick={() => handleClipClick(idx)}
               className="w-full text-left border border-gray-200 rounded-xl px-4 py-3 hover:border-gray-300 hover:bg-gray-50 transition-colors"
             >
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-xs font-semibold uppercase tracking-wide text-gray-600">
-                  Clip {idx + 1}
-                </span>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                    Clip {idx + 1}
+                  </span>
+                  {clip.relevance === "related" && (
+                    <span className="text-[10px] font-medium text-amber-700 bg-amber-100 rounded-full px-2 py-0.5">
+                      Related
+                    </span>
+                  )}
+                </div>
                 <span className="text-xs font-medium text-green-700 bg-green-100 rounded-full px-2 py-1">
                   {formatTime(clip.start_time_seconds)} –{" "}
                   {formatTime(clip.end_time_seconds)}
                 </span>
               </div>
               <p className="mt-2 text-sm text-gray-700 line-clamp-2">
-                “{clip.snippet}”
+                "{clip.snippet}"
               </p>
             </button>
           ))

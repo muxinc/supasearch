@@ -46,6 +46,7 @@ export interface ClipResult {
   start_time_seconds: number;
   end_time_seconds: number;
   snippet: string;
+  relevance: "exact" | "related";
 }
 
 export interface VideoSearchResult {
