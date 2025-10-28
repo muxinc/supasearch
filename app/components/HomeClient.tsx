@@ -21,6 +21,7 @@ export default function HomeClient() {
   const [subscriptionToken, setSubscriptionToken] = useState<any>(null);
   const [clipsRemaining, setClipsRemaining] = useState(0);
   const searchIdRef = useRef<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const query = searchParams.get("q") || "";
   const selectedVideoId = searchParams.get("video");
@@ -63,6 +64,9 @@ export default function HomeClient() {
     }
 
     console.log(`[Token Setup] SearchId changed to ${searchId}, fetching token...`);
+
+    // Clear previous subscription token to force re-subscription
+    setSubscriptionToken(null);
 
     fetchRealtimeSubscriptionToken(searchId)
       .then((token) => {
@@ -130,6 +134,12 @@ export default function HomeClient() {
 
     if (!realtimeMessages || realtimeMessages.length === 0) {
       console.log("[Message Processing] ⚠️ No messages to process (empty or null)");
+      return;
+    }
+
+    // Only process messages if we still have an active search
+    if (!searchId) {
+      console.log("[Message Processing] ⚠️ No active searchId, ignoring messages");
       return;
     }
 
@@ -260,14 +270,26 @@ export default function HomeClient() {
   // Start search when query changes
   useEffect(() => {
     const performSearch = async () => {
+      // Cancel any previous search
+      if (abortControllerRef.current) {
+        console.log("[Client] Cancelling previous search");
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+
       if (!query.trim()) {
         console.log("[Client] Empty query, resetting state");
         setSearchResults([]);
         setHasSearched(false);
         setSearchId(null);
         searchIdRef.current = null;
+        setSubscriptionToken(null);
         return;
       }
+
+      // Create a new AbortController for this search
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
 
       // Generate a unique search ID BEFORE starting the job
       const newSearchId = crypto.randomUUID();
@@ -288,7 +310,15 @@ export default function HomeClient() {
         console.log("[Client] Calling /api/search with searchId...");
         const response = await fetch(
           `/api/search?${new URLSearchParams({ q: query, searchId: newSearchId })}`,
+          { signal: abortController.signal }
         );
+
+        // If aborted, don't process the response
+        if (abortController.signal.aborted) {
+          console.log("[Client] Search was cancelled");
+          return;
+        }
+
         const data = await response.json();
 
         if (data.error) {
@@ -300,13 +330,26 @@ export default function HomeClient() {
 
         console.log(`[Client] ✅ Job started, already subscribed to channel`);
       } catch (error) {
-        console.error("[Client] Search error:", error);
-        setSearchResults([]);
-        setIsLoading(false);
+        // Only log error if not aborted
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log("[Client] Search request aborted");
+        } else {
+          console.error("[Client] Search error:", error);
+          setSearchResults([]);
+          setIsLoading(false);
+        }
       }
     };
 
     performSearch();
+
+    // Cleanup: abort on unmount or query change
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
   }, [query]);
 
   // Find selected video and clip
@@ -341,7 +384,7 @@ export default function HomeClient() {
 
             {/* Loading indicator for waterfall UX (shown while clips load) */}
             {isLoading && (
-              <div className="mt-4 flex items-center justify-center gap-3 bg-white/80 px-4 py-3 rounded-lg">
+              <div className="max-w-lg mx-auto mt-4 flex items-center justify-center gap-3 bg-white/80 px-4 py-3 rounded-lg">
                 <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
                 <div className="text-sm text-gray-900">
                   {clipsRemaining > 0
