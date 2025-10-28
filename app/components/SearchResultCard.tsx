@@ -113,7 +113,7 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
                   </span>
                   {clip.relevance === "related" && (
                     <span className="text-[10px] font-medium text-amber-700 bg-amber-100 rounded-full px-2 py-0.5">
-                      Related
+                      Similar
                     </span>
                   )}
                 </div>
