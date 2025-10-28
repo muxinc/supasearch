@@ -390,6 +390,8 @@ export default function HomeClient() {
           startTime={directStartTime ?? 0}
           title={selectedVideo.video.title}
           chapters={selectedVideo.video.chapters}
+          clips={selectedVideo.clips}
+          videoId={selectedVideo.video.id}
         />
       )}
     </div>
