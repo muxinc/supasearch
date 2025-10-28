@@ -47,6 +47,13 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
     router.replace(`/?${newSearchParams.toString()}`, { scroll: false });
   };
 
+  const handleVideoClick = () => {
+    const newSearchParams = new URLSearchParams(searchParams.toString());
+    newSearchParams.set("video", result.video.id);
+    newSearchParams.delete("clip"); // No clip = start from beginning
+    router.replace(`/?${newSearchParams.toString()}`, { scroll: false });
+  };
+
   const firstClip = result.clips[0];
   const thumbnailBase = `https://image.mux.com/${result.video.playback_id}/thumbnail.png`;
   const thumbnail = firstClip
@@ -55,7 +62,11 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
 
   return (
     <div className="search-result-card bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
-      <div className="relative w-full">
+      <button
+        type="button"
+        onClick={handleVideoClick}
+        className="relative w-full cursor-pointer hover:opacity-95 transition-opacity"
+      >
         <div className="aspect-video bg-gray-200">
           <img
             src={thumbnail}
@@ -79,7 +90,7 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
         )}
 
         {/* Overlay for title & description */}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/70 to-transparent p-6">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/70 to-transparent p-6 text-left">
           <h3 className="text-white text-xl font-semibold leading-tight mb-2 line-clamp-2">
             {result.video.title}
           </h3>
@@ -94,7 +105,7 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
             Starts at {formatTime(firstClip.start_time_seconds)}
           </div>
         )}
-      </div>
+      </button>
 
       {/* Clip list */}
       <div className="px-5 pb-5 pt-4 space-y-3 bg-white">

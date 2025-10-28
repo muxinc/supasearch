@@ -441,11 +441,11 @@ export default function HomeClient() {
 
       <Footer />
 
-      {selectedVideo && selectedClip && (
+      {selectedVideo && (
         <VideoModal
           isOpen={true}
           playbackId={selectedVideo.video.playback_id}
-          startTime={selectedClip.startTime}
+          startTime={selectedClip?.startTime || 0}
           title={selectedVideo.video.title}
         />
       )}
