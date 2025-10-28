@@ -142,7 +142,7 @@ export default function Footer() {
             </a>
           </div>
           <a
-            href="https://github.com"
+            href="https://github.com/muxinc/supasearch"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:opacity-80 transition-opacity"

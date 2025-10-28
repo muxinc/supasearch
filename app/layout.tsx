@@ -21,6 +21,22 @@ const bebasNeue = Bebas_Neue({
 export const metadata: Metadata = {
   title: "Supasearch",
   description: "Find the clips you are looking for",
+  openGraph: {
+    title: "Supasearch",
+    description: "Find the clips you are looking for",
+    images: [
+      {
+        url: "/supasearch.png",
+        alt: "Supasearch",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Supasearch",
+    description: "Find the clips you are looking for",
+    images: ["/supasearch.png"],
+  },
 };
 
 export default function RootLayout({
