@@ -24,10 +24,12 @@ export default function VideoModal({
   const handleClose = () => {
     const url = new URL(window.location.href);
     url.searchParams.delete("video");
+    url.searchParams.delete("clip");
     url.searchParams.delete("time");
-    router.push(
+    router.replace(
       url.pathname +
         (url.searchParams.toString() ? `?${url.searchParams.toString()}` : ""),
+      { scroll: false }
     );
   };
 

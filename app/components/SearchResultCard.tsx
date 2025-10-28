@@ -44,7 +44,7 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
     const newSearchParams = new URLSearchParams(searchParams.toString());
     newSearchParams.set("video", result.video.id);
     newSearchParams.set("clip", clipIndex.toString());
-    router.push(`/?${newSearchParams.toString()}`);
+    router.replace(`/?${newSearchParams.toString()}`, { scroll: false });
   };
 
   const firstClip = result.clips[0];
