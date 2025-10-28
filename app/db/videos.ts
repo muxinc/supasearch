@@ -62,6 +62,32 @@ export interface VideoSearchResult {
   clips: ClipResult[];
 }
 
+export async function getVideoById(videoId: string): Promise<VideoSearchResult | null> {
+  const { data: video, error } = await supabase
+    .from("videos")
+    .select("id, mux_asset_id, title, description, playback_id, topics, chapters")
+    .eq("id", videoId)
+    .single();
+
+  if (error || !video) {
+    console.error("Error fetching video:", error);
+    return null;
+  }
+
+  return {
+    video: {
+      id: video.id,
+      mux_asset_id: video.mux_asset_id,
+      title: video.title,
+      description: video.description,
+      playback_id: video.playback_id,
+      topics: video.topics || [],
+      chapters: video.chapters,
+    },
+    clips: [], // No clips when loading directly
+  };
+}
+
 export async function searchVideoChunks(
   query: string,
   limit: number = 10,

@@ -193,21 +193,22 @@ export const searchVideoJob = inngest.createFunction(
         }
       }
 
-      // Fetch topics for partial results
+      // Fetch topics and chapters for partial results
       const videoIds = Array.from(videoMap.keys());
       const supabase = createClient(supabaseUrl, supabaseKey);
       const { data: videos } = await supabase
         .from("videos")
-        .select("id, topics")
+        .select("id, topics, chapters")
         .in("id", videoIds);
 
       const videoTopicsMap = new Map(videos?.map((v) => [v.id, v.topics]) || []);
+      const videoChaptersMap = new Map(videos?.map((v) => [v.id, v.chapters]) || []);
 
       // Create partial results (videos only, clips pending)
       const partialResults: VideoSearchResult[] = Array.from(videoMap.entries())
         .sort(([, a], [, b]) => b.topSimilarity - a.topSimilarity)
         .slice(0, 10) // Top 10 videos
-        .filter(([, { chunk }]) => chunk.playback_id) // Filter out videos without playback_id
+        .filter(([, { chunk }]) => chunk.playback_id) // Only include videos with playback_id
         .map(([videoId, { chunk }]) => ({
           video: {
             id: chunk.video_id,
@@ -216,7 +217,7 @@ export const searchVideoJob = inngest.createFunction(
             description: chunk.description || "",
             playback_id: chunk.playback_id!,
             topics: videoTopicsMap.get(videoId) || [],
-            chapters: undefined, // Will be filled in step 3
+            chapters: videoChaptersMap.get(videoId),
           },
           clips: [], // Empty initially - will be filled in step 3
         }));

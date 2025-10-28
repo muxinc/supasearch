@@ -11,7 +11,7 @@ export type SearchJobChannelToken = Realtime.Token<
 
 export async function fetchRealtimeSubscriptionToken(
   jobId: string
-): Promise<SearchJobChannelToken> {
+) {
   console.log(`[Server Action] Generating subscription token for jobId: ${jobId}`);
   console.log(`[Server Action] Channel: search:${jobId}`);
   console.log(`[Server Action] Topics: ["videos", "clips", "error"]`);

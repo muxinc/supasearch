@@ -40,11 +40,17 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const handleClipClick = (clipIndex: number) => {
-    const newSearchParams = new URLSearchParams(searchParams.toString());
+  const handleClipClick = (clip: ClipResult) => {
+    const newSearchParams = new URLSearchParams();
     newSearchParams.set("video", result.video.id);
-    newSearchParams.set("clip", clipIndex.toString());
-    router.push(`/?${newSearchParams.toString()}`);
+    newSearchParams.set("time", clip.start_time_seconds.toString());
+    router.replace(`/?${newSearchParams.toString()}`, { scroll: false });
+  };
+
+  const handleVideoClick = () => {
+    const newSearchParams = new URLSearchParams();
+    newSearchParams.set("video", result.video.id);
+    router.replace(`/?${newSearchParams.toString()}`, { scroll: false });
   };
 
   const firstClip = result.clips[0];
@@ -55,7 +61,11 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
 
   return (
     <div className="search-result-card bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
-      <div className="relative w-full">
+      <button
+        type="button"
+        onClick={handleVideoClick}
+        className="relative w-full cursor-pointer hover:opacity-95 transition-opacity"
+      >
         <div className="aspect-video bg-gray-200">
           <img
             src={thumbnail}
@@ -79,7 +89,7 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
         )}
 
         {/* Overlay for title & description */}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/70 to-transparent p-6">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/70 to-transparent p-6 text-left">
           <h3 className="text-white text-xl font-semibold leading-tight mb-2 line-clamp-2">
             {result.video.title}
           </h3>
@@ -94,7 +104,7 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
             Starts at {formatTime(firstClip.start_time_seconds)}
           </div>
         )}
-      </div>
+      </button>
 
       {/* Clip list */}
       <div className="px-5 pb-5 pt-4 space-y-3 bg-white">
@@ -103,7 +113,7 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
             <button
               key={idx}
               type="button"
-              onClick={() => handleClipClick(idx)}
+              onClick={() => handleClipClick(clip)}
               className="w-full text-left border border-gray-200 rounded-xl px-4 py-3 hover:border-gray-300 hover:bg-gray-50 transition-colors"
             >
               <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -113,7 +123,7 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
                   </span>
                   {clip.relevance === "related" && (
                     <span className="text-[10px] font-medium text-amber-700 bg-amber-100 rounded-full px-2 py-0.5">
-                      Related
+                      Similar
                     </span>
                   )}
                 </div>
