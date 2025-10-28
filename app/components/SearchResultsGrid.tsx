@@ -29,30 +29,47 @@ interface SearchResultsGridProps {
 
 export default function SearchResultsGrid({ results }: SearchResultsGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
+  const hasAnimatedRef = useRef(false);
+  const previousResultsLengthRef = useRef(0);
 
   useEffect(() => {
     if (results.length > 0 && gridRef.current) {
       const cards = gridRef.current.querySelectorAll(".search-result-card");
 
-      // Reset initial state
-      cards.forEach((card) => {
-        (card as HTMLElement).style.opacity = "0";
-        (card as HTMLElement).style.transform =
-          "scale(0) rotate(-10deg) translateY(50px)";
-      });
+      // Only animate on initial load or when results length increases (new search)
+      const shouldAnimate = !hasAnimatedRef.current || results.length > previousResultsLengthRef.current;
 
-      // Animate cards with stagger
-      animate(cards, {
-        opacity: [0, 1],
-        scale: [0, 1.1, 1],
-        rotate: ["-10deg", "2deg", "0deg"],
-        translateY: [50, -10, 0],
-        delay: stagger(80, {
-          from: "first",
-        }),
-        duration: 500,
-        easing: "easeOutBack",
-      });
+      if (shouldAnimate) {
+        // Reset initial state
+        cards.forEach((card) => {
+          (card as HTMLElement).style.opacity = "0";
+          (card as HTMLElement).style.transform =
+            "scale(0) rotate(-10deg) translateY(50px)";
+        });
+
+        // Animate cards with stagger
+        animate(cards, {
+          opacity: [0, 1],
+          scale: [0, 1.1, 1],
+          rotate: ["-10deg", "2deg", "0deg"],
+          translateY: [50, -10, 0],
+          delay: stagger(80, {
+            from: "first",
+          }),
+          duration: 500,
+          easing: "easeOutBack",
+        });
+
+        hasAnimatedRef.current = true;
+      }
+
+      previousResultsLengthRef.current = results.length;
+    }
+
+    // Reset animation flag when results are cleared (new search)
+    if (results.length === 0) {
+      hasAnimatedRef.current = false;
+      previousResultsLengthRef.current = 0;
     }
   }, [results.length]);
 
