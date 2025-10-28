@@ -1,7 +1,13 @@
 "use server";
 
 import { inngest } from "@/app/lib/inngest/client";
-import { getSubscriptionToken } from "@inngest/realtime";
+import { searchJobChannel } from "@/app/lib/inngest/channels";
+import { getSubscriptionToken, Realtime } from "@inngest/realtime";
+
+export type SearchJobChannelToken = Realtime.Token<
+  ReturnType<typeof searchJobChannel>,
+  ["videos", "clips", "error"]
+>;
 
 export async function fetchRealtimeSubscriptionToken(
   jobId: string
@@ -13,7 +19,7 @@ export async function fetchRealtimeSubscriptionToken(
   try {
     // Create a token that allows subscribing to all topics for this search job
     const token = await getSubscriptionToken(inngest, {
-      channel: `search:${jobId}`,
+      channel: searchJobChannel(jobId),
       topics: ["videos", "clips", "error"],
     });
 
