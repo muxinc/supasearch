@@ -9,6 +9,7 @@ import Footer from "./Footer";
 import Header from "./Header";
 import SearchInput from "./SearchInput";
 import SearchResultsGrid from "./SearchResultsGrid";
+import SuggestedSearches from "./SuggestedSearches";
 import VideoModal from "./VideoModal";
 
 export default function HomeClient() {
@@ -385,6 +386,11 @@ export default function HomeClient() {
                 <p className="text-lg">No results found for "{query}"</p>
                 <p className="text-sm mt-2">Try a different search query</p>
               </div>
+            )}
+
+            {/* Suggested Searches - only show when no query and no search performed */}
+            {!query && !hasSearched && !isLoading && (
+              <SuggestedSearches />
             )}
           </div>
         </div>
