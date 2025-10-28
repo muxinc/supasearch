@@ -40,17 +40,16 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const handleClipClick = (clipIndex: number) => {
-    const newSearchParams = new URLSearchParams(searchParams.toString());
+  const handleClipClick = (clip: ClipResult) => {
+    const newSearchParams = new URLSearchParams();
     newSearchParams.set("video", result.video.id);
-    newSearchParams.set("clip", clipIndex.toString());
+    newSearchParams.set("time", clip.start_time_seconds.toString());
     router.replace(`/?${newSearchParams.toString()}`, { scroll: false });
   };
 
   const handleVideoClick = () => {
-    const newSearchParams = new URLSearchParams(searchParams.toString());
+    const newSearchParams = new URLSearchParams();
     newSearchParams.set("video", result.video.id);
-    newSearchParams.delete("clip"); // No clip = start from beginning
     router.replace(`/?${newSearchParams.toString()}`, { scroll: false });
   };
 
@@ -114,7 +113,7 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
             <button
               key={idx}
               type="button"
-              onClick={() => handleClipClick(idx)}
+              onClick={() => handleClipClick(clip)}
               className="w-full text-left border border-gray-200 rounded-xl px-4 py-3 hover:border-gray-300 hover:bg-gray-50 transition-colors"
             >
               <div className="flex items-center justify-between gap-3 flex-wrap">
