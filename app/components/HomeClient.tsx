@@ -383,9 +383,9 @@ export default function HomeClient() {
 
             {/* Loading indicator for waterfall UX (shown while clips load) */}
             {isLoading && (
-              <div className="max-w-lg mx-auto mt-4 flex items-center justify-center gap-3 bg-white/80 px-4 py-3 rounded-lg">
-                <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
-                <div className="text-sm text-gray-900">
+              <div className="max-w-lg mx-auto mt-4 flex items-center justify-center gap-3 bg-white px-4 py-3 border-2 border-black shadow-[4px_4px_0px_0px_#000]">
+                <div className="w-4 h-4 border-2 border-gray-300 border-t-black rounded-full animate-spin" />
+                <div className="text-sm font-medium text-black">
                   {clipsRemaining > 0
                     ? `Extracting clips (${clipsRemaining} remaining)...`
                     : "Finding relevant clips..."}
@@ -404,10 +404,10 @@ export default function HomeClient() {
             {/* Loading State */}
             {isLoading && (
               <div className="mt-12 text-center">
-                <div className="inline-flex items-center gap-3 bg-white px-6 py-4 rounded-lg shadow-md">
-                  <div className="w-6 h-6 border-3 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
+                <div className="inline-flex items-center gap-4 bg-white px-6 py-4 border-2 border-black shadow-[6px_6px_0px_0px_#000]">
+                  <div className="w-6 h-6 border-3 border-gray-300 border-t-black rounded-full animate-spin" />
                   <div className="text-left">
-                    <div className="font-semibold text-gray-900">
+                    <div className="font-semibold text-black">
                       {clipsRemaining > 0
                         ? "Extracting clips..."
                         : "Searching videos..."}
