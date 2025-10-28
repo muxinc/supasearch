@@ -1,17 +1,11 @@
 "use server";
 
 import { inngest } from "@/app/lib/inngest/client";
-import { searchJobChannel } from "@/app/lib/inngest/channels";
-import { getSubscriptionToken, Realtime } from "@inngest/realtime";
-
-export type SearchJobChannelToken = Realtime.Token<
-  typeof searchJobChannel,
-  ["videos", "clips", "error"]
->;
+import { getSubscriptionToken } from "@inngest/realtime";
 
 export async function fetchRealtimeSubscriptionToken(
   jobId: string
-): Promise<SearchJobChannelToken> {
+) {
   console.log(`[Server Action] Generating subscription token for jobId: ${jobId}`);
   console.log(`[Server Action] Channel: search:${jobId}`);
   console.log(`[Server Action] Topics: ["videos", "clips", "error"]`);
@@ -24,7 +18,6 @@ export async function fetchRealtimeSubscriptionToken(
     });
 
     console.log(`[Server Action] ✅ Token generated successfully for jobId: ${jobId}`);
-    console.log(`[Server Action] Token expires at:`, token.expiresAt);
 
     return token;
   } catch (error) {

@@ -174,7 +174,7 @@ export const searchVideoJob = inngest.createFunction(
 
       for (const chunk of chunks) {
         const existing = videoMap.get(chunk.video_id);
-        const similarity = chunk.similarity_score ?? chunk.similarity;
+        const similarity = chunk.similarity_score;
         if (
           !existing ||
           (typeof similarity === "number" &&
@@ -208,13 +208,14 @@ export const searchVideoJob = inngest.createFunction(
       const partialResults: VideoSearchResult[] = Array.from(videoMap.entries())
         .sort(([, a], [, b]) => b.topSimilarity - a.topSimilarity)
         .slice(0, 10) // Top 10 videos
+        .filter(([, { chunk }]) => chunk.playback_id) // Only include videos with playback_id
         .map(([videoId, { chunk }]) => ({
           video: {
             id: chunk.video_id,
             mux_asset_id: chunk.mux_asset_id,
             title: chunk.title || "",
             description: chunk.description || "",
-            playback_id: chunk.playback_id,
+            playback_id: chunk.playback_id!,
             topics: videoTopicsMap.get(videoId) || [],
             chapters: videoChaptersMap.get(videoId),
           },
