@@ -447,6 +447,7 @@ export default function HomeClient() {
           playbackId={selectedVideo.video.playback_id}
           startTime={selectedClip?.startTime || 0}
           title={selectedVideo.video.title}
+          chapters={selectedVideo.video.chapters}
         />
       )}
     </div>
