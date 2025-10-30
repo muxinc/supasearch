@@ -18,7 +18,7 @@
     "@ai-sdk/openai": "^2.0.32",
     "@inngest/realtime": "^0.4.4",
     "@mux/mux-node": "^12.7.0",
-    "@mux/mux-player-react": "^3.7.0",
+    "@mux/mux-player-react": "^3.8.0",
     "@mux/supabase": "^0.0.21",
     "@supabase/supabase-js": "^2.57.4",
     "ai": "^5.0.45",
