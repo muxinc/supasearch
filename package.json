@@ -26,7 +26,7 @@
     "dotenv": "^17.2.2",
     "inngest": "^3.44.3",
     "lucide-react": "^0.542.0",
-    "next": "15.5.2",
+    "next": "15.5.7",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "supabase": "^2.45.5",
