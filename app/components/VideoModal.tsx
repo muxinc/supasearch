@@ -74,7 +74,7 @@ export default function VideoModal({
     router.replace(
       url.pathname +
         (url.searchParams.toString() ? `?${url.searchParams.toString()}` : ""),
-      { scroll: false }
+      { scroll: false },
     );
   };
 
@@ -89,7 +89,9 @@ export default function VideoModal({
       const url = new URL(window.location.href);
       url.searchParams.set("video", videoId);
       url.searchParams.set("time", clip.start_time_seconds.toString());
-      router.replace(url.pathname + `?${url.searchParams.toString()}`, { scroll: false });
+      router.replace(url.pathname + `?${url.searchParams.toString()}`, {
+        scroll: false,
+      });
     }
   };
 
@@ -169,38 +171,37 @@ export default function VideoModal({
                 Relevant Clips ({clips.length})
               </h3>
               <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2 min-h-0">
-              {clips.map((clip, idx) => {
-                const thumbnailUrl = `https://image.mux.com/${playbackId}/thumbnail.png?width=160&time=${clip.start_time_seconds}`;
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => handleClipClick(clip)}
-                    className="w-full text-left bg-white border-2 border-black hover:bg-gray-100 transition-colors overflow-hidden flex gap-3 p-2"
-                  >
-                    <div className="w-24 h-16 flex-shrink-0 bg-gray-200 border-2 border-black">
-                      <img
-                        src={thumbnailUrl}
-                        alt={`Clip ${idx + 1} thumbnail`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-black">
-                          Clip {idx + 1}
-                        </span>
-                        <span className="text-xs font-semibold text-black bg-gray-200 px-2 py-0.5 whitespace-nowrap">
-                          {formatTime(clip.start_time_seconds)} – {formatTime(clip.end_time_seconds)}
-                        </span>
+                {clips.map((clip, idx) => {
+                  const thumbnailUrl = `https://image.mux.com/${playbackId}/thumbnail.png?width=160&time=${clip.start_time_seconds}`;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleClipClick(clip)}
+                      className="w-full text-left bg-white border-2 border-black hover:bg-gray-100 transition-colors overflow-hidden flex gap-3 p-2"
+                    >
+                      <div className="w-24 h-16 flex-shrink-0 bg-gray-200 border-2 border-black">
+                        <img
+                          src={thumbnailUrl}
+                          alt={`Clip ${idx + 1} thumbnail`}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
-                      <p className="text-xs text-black/90">
-                        {clip.snippet}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-xs font-semibold uppercase tracking-wide text-black">
+                            Clip {idx + 1}
+                          </span>
+                          <span className="text-xs font-semibold text-black bg-gray-200 px-2 py-0.5 whitespace-nowrap">
+                            {formatTime(clip.start_time_seconds)} –{" "}
+                            {formatTime(clip.end_time_seconds)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-black/90">{clip.snippet}</p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

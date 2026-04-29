@@ -214,7 +214,9 @@ async function generateVideoMetadata(
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       if (attempt > 0) {
-        console.log(`Retry attempt ${attempt}/${maxRetries - 1} for metadata generation...`);
+        console.log(
+          `Retry attempt ${attempt}/${maxRetries - 1} for metadata generation...`,
+        );
         // 2 second delay between retries
         await new Promise((resolve) => setTimeout(resolve, 2000));
       }
@@ -237,9 +239,7 @@ async function generateVideoMetadata(
   }
 
   // This should never be reached, but TypeScript needs it
-  throw new Error(
-    `Failed to generate video metadata: ${lastError?.message}`,
-  );
+  throw new Error(`Failed to generate video metadata: ${lastError?.message}`);
 }
 
 /**

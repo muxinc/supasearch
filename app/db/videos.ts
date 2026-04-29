@@ -62,10 +62,14 @@ export interface VideoSearchResult {
   clips: ClipResult[];
 }
 
-export async function getVideoById(videoId: string): Promise<VideoSearchResult | null> {
+export async function getVideoById(
+  videoId: string,
+): Promise<VideoSearchResult | null> {
   const { data: video, error } = await supabase
     .from("videos")
-    .select("id, mux_asset_id, title, description, playback_id, topics, chapters")
+    .select(
+      "id, mux_asset_id, title, description, playback_id, topics, chapters",
+    )
     .eq("id", videoId)
     .single();
 

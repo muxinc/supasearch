@@ -1,9 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState, useCallback, useRef } from "react";
-import { useInngestSubscription } from "@inngest/realtime/hooks";
-import { fetchRealtimeSubscriptionToken } from "../actions/get-subscribe-token";
+import { useEffect, useRef, useState } from "react";
 import { fetchVideoById } from "../actions/get-video";
 import type { VideoSearchResult } from "../db/videos";
 import Footer from "./Footer";
@@ -18,11 +16,10 @@ export default function HomeClient() {
   const [searchResults, setSearchResults] = useState<VideoSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  const [searchId, setSearchId] = useState<string | null>(null);
-  const [subscriptionToken, setSubscriptionToken] = useState<any>(null);
   const [clipsRemaining, setClipsRemaining] = useState(0);
-  const [directVideo, setDirectVideo] = useState<VideoSearchResult | null>(null);
-  const searchIdRef = useRef<string | null>(null);
+  const [directVideo, setDirectVideo] = useState<VideoSearchResult | null>(
+    null,
+  );
   const abortControllerRef = useRef<AbortController | null>(null);
   const previousQueryRef = useRef<string>("");
   const isInitialLoadRef = useRef(true);
@@ -32,160 +29,12 @@ export default function HomeClient() {
   const timeParam = searchParams.get("time");
   const directStartTime = timeParam ? Number.parseFloat(timeParam) : null;
 
-  // Token fetcher for realtime subscription
-  const getToken = useCallback(async () => {
-    if (!searchIdRef.current) {
-      console.error("[Token Fetch] No active search ID");
-      throw new Error("No active search ID");
-    }
-
-    try {
-      const token = await fetchRealtimeSubscriptionToken(searchIdRef.current);
-      return token;
-    } catch (error) {
-      console.error("[Token Fetch] Error:", error);
-      throw error;
-    }
-  }, [searchId]);
-
-  // Fetch token when searchId changes
-  useEffect(() => {
-    if (!searchId) {
-      setSubscriptionToken(null);
-      return;
-    }
-
-    // Clear previous subscription token to force re-subscription
-    setSubscriptionToken(null);
-
-    fetchRealtimeSubscriptionToken(searchId)
-      .then((token) => {
-        setSubscriptionToken(token);
-      })
-      .catch((error) => {
-        console.error("[Token Setup] Failed to fetch token:", error);
-      });
-  }, [searchId]);
-
-  // Subscribe to realtime updates
-  const subscriptionConfig = {
-    token: subscriptionToken,
-    refreshToken: getToken,
-    // Only subscribe when we have a token
-    enabled: !!subscriptionToken,
-  };
-
-
-  const {
-    data: realtimeMessages,
-    error: subscriptionError,
-    state: subscriptionState,
-    freshData,
-    latestData
-  } = useInngestSubscription(subscriptionConfig);
-
-  // Log subscription errors
-  useEffect(() => {
-    if (subscriptionError) {
-      console.error("[Realtime] Subscription error:", subscriptionError);
-    }
-  }, [subscriptionError]);
-
-  // Process realtime messages
-  useEffect(() => {
-    if (!realtimeMessages || realtimeMessages.length === 0) {
-      return;
-    }
-
-    // Only process messages if we still have an active search
-    if (!searchId) {
-      return;
-    }
-
-    // Process each message
-    for (let i = 0; i < realtimeMessages.length; i++) {
-      const message = realtimeMessages[i];
-
-      if (message.topic === "videos") {
-        // Initial video results
-        const { videos, status } = message.data as {
-          videos: VideoSearchResult[];
-          status: "initial" | "processing" | "completed";
-        };
-
-        if (videos && videos.length > 0) {
-          setSearchResults(videos);
-          setClipsRemaining(videos.length);
-        }
-
-        if (status === "completed" && (!videos || videos.length === 0)) {
-          setIsLoading(false);
-        }
-      } else if (message.topic === "clips") {
-        // Individual clip results
-        const { videoId, clips } = message.data as {
-          videoId: string;
-          clips: Array<{
-            start_time_seconds: number;
-            end_time_seconds: number;
-            snippet: string;
-            relevance: "exact" | "related";
-          }>;
-        };
-
-        // Update the specific video with clips
-        setSearchResults((prev) =>
-          prev.map((result) =>
-            result.video.id === videoId
-              ? { ...result, clips }
-              : result
-          )
-        );
-
-        // Decrement clips remaining
-        setClipsRemaining((prev) => {
-          const remaining = prev - 1;
-          if (remaining <= 0) {
-            setIsLoading(false);
-          }
-          return remaining;
-        });
-      } else if (message.topic === "error") {
-        // Error for a specific video
-        const { videoId, message: errorMessage } = message.data as {
-          videoId?: string;
-          message: string;
-        };
-
-        console.error(`[Clips] Error for video ${videoId}:`, errorMessage);
-
-        // Mark video as having no clips
-        if (videoId) {
-          setSearchResults((prev) =>
-            prev.map((result) =>
-              result.video.id === videoId
-                ? { ...result, clips: [] }
-                : result
-            )
-          );
-
-          setClipsRemaining((prev) => {
-            const remaining = prev - 1;
-            if (remaining <= 0) {
-              setIsLoading(false);
-            }
-            return remaining;
-          });
-        }
-      }
-    }
-  }, [realtimeMessages]);
-
   // Load video directly from URL if video param exists without query and not in search results
   useEffect(() => {
     if (selectedVideoId && !query) {
-      // Check if video is already in search results
-      const videoInResults = searchResults.find((result) => result.video.id === selectedVideoId);
+      const videoInResults = searchResults.find(
+        (result) => result.video.id === selectedVideoId,
+      );
 
       if (videoInResults) {
         setDirectVideo(null);
@@ -195,7 +44,9 @@ export default function HomeClient() {
             if (video) {
               setDirectVideo(video);
             } else {
-              console.error(`[Direct Video] Video not found: ${selectedVideoId}`);
+              console.error(
+                `[Direct Video] Video not found: ${selectedVideoId}`,
+              );
             }
           })
           .catch((error) => {
@@ -203,7 +54,6 @@ export default function HomeClient() {
           });
       }
     } else {
-      // Clear direct video if query changes or video param removed
       setDirectVideo(null);
     }
   }, [selectedVideoId, query, searchResults]);
@@ -211,48 +61,32 @@ export default function HomeClient() {
   // Start search when query changes (but not on initial load with q param)
   useEffect(() => {
     const performSearch = async () => {
-      // Skip search on initial page load - only populate the search box
       if (isInitialLoadRef.current) {
         isInitialLoadRef.current = false;
         previousQueryRef.current = query;
         return;
       }
 
-      // Skip if query hasn't actually changed
       if (previousQueryRef.current === query) {
         return;
       }
       previousQueryRef.current = query;
 
-      // Cancel any previous search
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
       }
 
       if (!query.trim()) {
-        // Only reset search state if we don't have a video selected
-        // This preserves the search results grid when clicking a video
         if (!selectedVideoId) {
           setSearchResults([]);
           setHasSearched(false);
-          setSearchId(null);
-          searchIdRef.current = null;
-          setSubscriptionToken(null);
         }
         return;
       }
 
-      // Create a new AbortController for this search
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
-
-      // Generate a unique search ID BEFORE starting the job
-      const newSearchId = crypto.randomUUID();
-
-      // Set search ID immediately so subscription can start
-      setSearchId(newSearchId);
-      searchIdRef.current = newSearchId;
 
       setIsLoading(true);
       setHasSearched(true);
@@ -260,28 +94,90 @@ export default function HomeClient() {
       setClipsRemaining(0);
 
       try {
-        // Start the search job with our pre-generated searchId
         const response = await fetch(
-          `/api/search?${new URLSearchParams({ q: query, searchId: newSearchId })}`,
-          { signal: abortController.signal }
+          `/api/search?${new URLSearchParams({ q: query })}`,
+          { signal: abortController.signal },
         );
 
-        // If aborted, don't process the response
-        if (abortController.signal.aborted) {
-          return;
-        }
+        if (abortController.signal.aborted) return;
 
-        const data = await response.json();
-
-        if (data.error) {
-          console.error("[Search] Error:", data.error);
+        if (!response.ok || !response.body) {
           setSearchResults([]);
           setIsLoading(false);
           return;
         }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop()!;
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const message = JSON.parse(line);
+
+              if (message.type === "videos") {
+                const { videos, status } = message;
+                if (videos && videos.length > 0) {
+                  setSearchResults(videos);
+                  setClipsRemaining(videos.length);
+                }
+                if (
+                  status === "completed" &&
+                  (!videos || videos.length === 0)
+                ) {
+                  setIsLoading(false);
+                }
+              } else if (message.type === "clips") {
+                const { videoId, clips } = message;
+                setSearchResults((prev) =>
+                  prev.map((result) =>
+                    result.video.id === videoId ? { ...result, clips } : result,
+                  ),
+                );
+                setClipsRemaining((prev) => {
+                  const remaining = prev - 1;
+                  if (remaining <= 0) setIsLoading(false);
+                  return remaining;
+                });
+              } else if (message.type === "error") {
+                const { videoId } = message;
+                console.error(
+                  `[Search] Error for video ${videoId}:`,
+                  message.message,
+                );
+                if (videoId) {
+                  setSearchResults((prev) =>
+                    prev.map((result) =>
+                      result.video.id === videoId
+                        ? { ...result, clips: [] }
+                        : result,
+                    ),
+                  );
+                  setClipsRemaining((prev) => {
+                    const remaining = prev - 1;
+                    if (remaining <= 0) setIsLoading(false);
+                    return remaining;
+                  });
+                }
+              }
+            } catch {
+              // Skip unparseable lines
+            }
+          }
+        }
+
+        setIsLoading(false);
       } catch (error) {
-        // Only log error if not aborted
-        if (error instanceof Error && error.name !== 'AbortError') {
+        if (error instanceof Error && error.name !== "AbortError") {
           console.error("[Search] Request error:", error);
           setSearchResults([]);
           setIsLoading(false);
@@ -291,7 +187,6 @@ export default function HomeClient() {
 
     performSearch();
 
-    // Cleanup: abort on unmount or query change
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -304,7 +199,6 @@ export default function HomeClient() {
   let selectedVideo: VideoSearchResult | null = null;
 
   if (selectedVideoId) {
-    // First try to find in search results, fallback to direct video
     selectedVideo =
       searchResults.find((result) => result.video.id === selectedVideoId) ||
       directVideo ||
@@ -374,9 +268,7 @@ export default function HomeClient() {
             )}
 
             {/* Suggested Searches - only show when no query and no search performed */}
-            {!query && !hasSearched && !isLoading && (
-              <SuggestedSearches />
-            )}
+            {!query && !hasSearched && !isLoading && <SuggestedSearches />}
           </div>
         </div>
       )}

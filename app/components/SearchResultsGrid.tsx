@@ -37,7 +37,9 @@ export default function SearchResultsGrid({ results }: SearchResultsGridProps) {
       const cards = gridRef.current.querySelectorAll(".search-result-card");
 
       // Only animate on initial load or when results length increases (new search)
-      const shouldAnimate = !hasAnimatedRef.current || results.length > previousResultsLengthRef.current;
+      const shouldAnimate =
+        !hasAnimatedRef.current ||
+        results.length > previousResultsLengthRef.current;
 
       if (shouldAnimate) {
         // Reset initial state
